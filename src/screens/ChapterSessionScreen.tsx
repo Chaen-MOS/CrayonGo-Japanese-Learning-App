@@ -6,7 +6,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {CartoonButton} from '../components/CartoonButton';
 import {Dots} from '../components/Decorations';
-import {Logo} from '../components/Logo';
+import {ScreenHeader} from '../components/ScreenHeader';
 import {SessionCard} from '../components/SessionCard';
 import {colors, shadow} from '../constants/theme';
 import {getSessionsByChapter} from '../database/repository';
@@ -43,12 +43,7 @@ export function ChapterSessionScreen({navigation, route}: Props) {
       <Dots />
       <View style={styles.content}>
         <CartoonButton label="" color={colors.yellow} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel="返回 Chapter 页面" style={styles.back} />
-        <View style={styles.header}>
-          <Logo small />
-          <Text style={styles.title}>{chapter}</Text>
-          <Text style={styles.subtitle}>选择学习整个章节或单独的 Session</Text>
-          <View style={styles.underline} />
-        </View>
+        <ScreenHeader title={chapter} subtitle="选择学习整个章节或单独的 Session" />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : sessions.length === 0 ? (
@@ -66,9 +61,9 @@ export function ChapterSessionScreen({navigation, route}: Props) {
               style={({pressed}) => [styles.wholeCard, shadow, pressed && styles.pressed]}>
               <View style={styles.wholeIcon}><Icon name="layers" size={27} color={colors.white} /></View>
               <View style={styles.wholeContent}>
-                <Text style={styles.wholeTitle}>Whole Chapter</Text>
+                <Text style={styles.wholeTitle}>整章学习</Text>
                 <Text style={styles.wholeText}>学习本章节全部单词</Text>
-                <Text style={styles.wholeText}>Total: {wordCount} words</Text>
+                <Text style={styles.wholeText}>共 {wordCount} 个单词</Text>
               </View>
               <Icon name="arrow-forward" size={28} color={colors.white} />
             </Pressable>
@@ -91,10 +86,6 @@ const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.cream, position: 'relative'},
   content: {flex: 1, paddingHorizontal: 18, paddingBottom: 12, zIndex: 2, elevation: 2},
   back: {width: 48, height: 48, borderRadius: 16, paddingHorizontal: 0, position: 'absolute', left: 18, top: 6, zIndex: 4, elevation: 4},
-  header: {alignItems: 'center', paddingTop: 2, paddingBottom: 8},
-  title: {color: colors.ink, fontSize: 27, fontWeight: '900', textAlign: 'center', marginTop: 3},
-  subtitle: {color: colors.ink, fontSize: 15, fontWeight: '900', textAlign: 'center', marginTop: 2},
-  underline: {width: '56%', height: 7, backgroundColor: '#F7D887', borderRadius: 8, marginTop: 6},
   wholeCard: {minHeight: 106, borderWidth: 4, borderColor: colors.ink, borderRadius: 18, backgroundColor: colors.purple, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10},
   wholeIcon: {width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: colors.ink, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center'},
   wholeContent: {flex: 1, gap: 1},

@@ -1,4 +1,6 @@
 import Tts from 'react-native-tts';
+import {duckBackgroundAudio, restoreBackgroundAudio} from './audioDucking';
+import {loadPronunciationRate, loadPronunciationVolume} from './settings';
 
 let configured = false;
 
@@ -8,7 +10,6 @@ const configure = async () => {
   }
   try {
     await Tts.setDefaultLanguage('ja-JP');
-    await Tts.setDefaultRate(0.45);
     configured = true;
   } catch (error) {
     console.error('TTS configuration failed', error);
@@ -22,16 +23,37 @@ export const speakJapanese = async (text: string) => {
   }
   try {
     await configure();
-    Tts.stop();
-    Tts.speak(spokenText);
+    const [volume, rate] = await Promise.all([loadPronunciationVolume(), loadPronunciationRate()]);
+    await Tts.setDefaultRate(rate);
+    await Tts.stop();
+    duckBackgroundAudio();
+    const subscriptions: {remove: () => void}[] = [];
+    const restore = () => {
+      subscriptions.splice(0).forEach(subscription => subscription.remove());
+      restoreBackgroundAudio();
+    };
+    subscriptions.push(Tts.addEventListener('tts-finish', restore) as unknown as {remove: () => void});
+    subscriptions.push(Tts.addEventListener('tts-cancel', restore) as unknown as {remove: () => void});
+    subscriptions.push(Tts.addEventListener('tts-error', restore) as unknown as {remove: () => void});
+    Tts.speak(spokenText, {
+      iosVoiceId: '',
+      rate,
+      androidParams: {
+        KEY_PARAM_STREAM: 'STREAM_MUSIC',
+        KEY_PARAM_VOLUME: volume,
+        KEY_PARAM_PAN: 0,
+      },
+    });
   } catch (error) {
     console.error('TTS speak failed', error);
+    restoreBackgroundAudio();
   }
 };
 
 export const stopSpeech = () => {
   try {
     Tts.stop();
+    restoreBackgroundAudio();
   } catch (error) {
     console.error('TTS stop failed', error);
   }

@@ -19,11 +19,15 @@ npm install
 npm start
 ```
 
+Metro is configured to use port `8090`.
+
 In another terminal:
 
 ```bash
 npm run android
 ```
+
+The Android development command also uses Metro port `8090`.
 
 ## Checks
 
@@ -56,7 +60,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 Run without starting Metro:
 
 ```bash
-npx react-native run-android --no-packager
+npx react-native run-android --no-packager --port 8090
 ```
 
 If Gradle picks Java 8 on Windows, use Android Studio's JBR for the command:
@@ -96,6 +100,7 @@ MYAPP_UPLOAD_KEY_PASSWORD=<your local key password>
 ```
 
 `android/keystore.properties` and `android/app/shinchan-go-release.keystore` are ignored by Git.
+Alternatively, provide the same four values as environment variables for CI or a local shell. Release passwords are read at build time and are not hardcoded in `android/app/build.gradle`.
 
 ## Build the Release APK
 

@@ -17,7 +17,7 @@ export function SessionCard({item, index, onPress}: {item: SessionSummary; index
       </View>
       <View style={styles.content}>
         <Text style={styles.session}>{item.session}</Text>
-        <Text style={styles.meta}>{item.wordCount} words</Text>
+        <Text style={styles.meta}>{item.wordCount} 个单词</Text>
         <Text style={styles.hint}>点击开始学习</Text>
       </View>
     </Pressable>

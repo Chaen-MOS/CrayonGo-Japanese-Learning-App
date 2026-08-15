@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image, StyleSheet, View} from 'react-native';
 
-const logoSource = require('../assets/images/logo.png');
+const logoSource = require('../../image/logo.png');
 
 export function Logo({small = false}: {small?: boolean}) {
   return (

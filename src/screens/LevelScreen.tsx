@@ -1,14 +1,16 @@
-import React from 'react';
+import React, {useCallback, useState} from 'react';
 import {Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useFocusEffect} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {CartoonButton} from '../components/CartoonButton';
 import {Dots} from '../components/Decorations';
 import {Logo} from '../components/Logo';
 import {colors, shadow} from '../constants/theme';
+import {getLevelProgressSummaries} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
-import {JLPT_LEVELS, JlptLevel} from '../types/vocabulary';
+import {JLPT_LEVELS, JlptLevel, LevelProgressSummary} from '../types/vocabulary';
 import {isSmallPhone} from '../utils/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Levels'>;
@@ -19,6 +21,30 @@ const levelColors: Record<JlptLevel, string> = {N1: colors.red, N2: colors.yello
 export function LevelScreen({navigation}: Props) {
   const metrics = useWindowDimensions();
   const compact = isSmallPhone(metrics);
+  const [summaries, setSummaries] = useState<Record<JlptLevel, LevelProgressSummary>>({} as Record<JlptLevel, LevelProgressSummary>);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      getLevelProgressSummaries()
+        .then(data => {
+          if (mounted) {
+            setSummaries(
+              data.reduce<Record<JlptLevel, LevelProgressSummary>>((map, item) => {
+                map[item.jlpt_level] = item;
+                return map;
+              }, {} as Record<JlptLevel, LevelProgressSummary>),
+            );
+          }
+        })
+        .catch(error => {
+          console.error('Load level progress failed', error);
+        });
+      return () => {
+        mounted = false;
+      };
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -34,7 +60,12 @@ export function LevelScreen({navigation}: Props) {
             {JLPT_LEVELS.map(level => (
               <Pressable key={level} accessibilityRole="button" accessibilityLabel={`选择 ${level} ${labels[level]}`} onPress={() => navigation.navigate('Chapters', {level})} style={({pressed}) => [styles.levelButton, compact && styles.levelButtonCompact, shadow, {backgroundColor: levelColors[level]}, pressed && styles.pressed]}>
                 <Text style={[styles.levelText, compact && styles.levelTextCompact, level === 'N2' || level === 'N4' ? styles.darkText : styles.lightText]}>{level}</Text>
-                <View style={styles.pill}><Text style={styles.pillText}>{labels[level]}</Text></View>
+                <View style={styles.levelInfo}>
+                  <View style={styles.pill}><Text style={styles.pillText}>{labels[level]}</Text></View>
+                  <Text style={[styles.progressText, level === 'N2' || level === 'N4' ? styles.darkText : styles.lightText]}>
+                    已学 {summaries[level]?.studiedWords ?? 0}/{summaries[level]?.totalWords ?? 0} · 掌握 {summaries[level]?.masteredWords ?? 0}
+                  </Text>
+                </View>
                 <Icon name="arrow-forward" size={28} color={level === 'N2' || level === 'N4' ? colors.ink : colors.white} />
               </Pressable>
             ))}
@@ -63,8 +94,10 @@ const styles = StyleSheet.create({
   pressed: {transform: [{translateY: 3}]},
   levelText: {fontSize: 36, fontWeight: '900'},
   levelTextCompact: {fontSize: 32},
+  levelInfo: {flex: 1, alignItems: 'center', gap: 4},
   lightText: {color: colors.white},
   darkText: {color: colors.ink},
   pill: {minWidth: 100, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.72)'},
   pillText: {color: colors.ink, fontSize: 17, fontWeight: '900'},
+  progressText: {fontSize: 11, fontWeight: '900', textAlign: 'center'},
 });

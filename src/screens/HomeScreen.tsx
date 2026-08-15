@@ -1,181 +1,361 @@
-import React, {useState} from 'react';
-import {Alert, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
-import {errorCodes, isErrorWithCode, keepLocalCopy, pick, types} from '@react-native-documents/picker';
-import type {DocumentPickerResponse} from '@react-native-documents/picker';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Animated, Image, ImageSourcePropType, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CartoonButton} from '../components/CartoonButton';
 import {Dots} from '../components/Decorations';
-import {LevelDropdown} from '../components/LevelDropdown';
-import {Logo} from '../components/Logo';
-import {colors} from '../constants/theme';
-import {clearAllWords, clearWordsByLevel, importVocabulary} from '../database/repository';
+import {HomeMascot} from '../components/HomeMascot';
+import {colors, shadow} from '../constants/theme';
+import {getLevelProgressSummaries, getStudyStats} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
-import {parseVocabularyCsv} from '../services/csvParser';
-import {readTextFile} from '../services/nativeFileReader';
-import {JlptLevel} from '../types/vocabulary';
+import {JLPT_LEVELS, JlptLevel, LevelProgressSummary, StudyStats} from '../types/vocabulary';
 import {isSmallPhone} from '../utils/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const fallbackFileName = (file: DocumentPickerResponse) => file.name || `labigo-vocabulary-${Date.now()}.csv`;
+const todayPlanIcon = require('../../image/todayplan.png') as ImageSourcePropType;
+const studyProgressIcon = require('../../image/studyprogress.png') as ImageSourcePropType;
 
-const getReadableUri = async (file: DocumentPickerResponse) => {
-  console.log('[Import] selected file', {name: file.name, type: file.type, nativeType: file.nativeType, uri: file.uri});
-  const [copy] = await keepLocalCopy({
-    destination: 'cachesDirectory',
-    files: [{uri: file.uri, fileName: fallbackFileName(file)}],
-  });
-  if (copy.status === 'success') {
-    console.log('[Import] local copy ready', copy.localUri);
-    return copy.localUri;
-  }
-  console.log('[Import] local copy failed, falling back to original uri', copy.copyError);
-  return file.uri;
+const emptyStats: StudyStats = {
+  totalWords: 0,
+  studiedWords: 0,
+  newWords: 0,
+  masteredWords: 0,
+  learningWords: 0,
+  difficultWords: 0,
+  favoriteWords: 0,
+  dueWords: 0,
+  reviewedToday: 0,
+  dailyGoal: 20,
+  currentStreak: 0,
+  totalReviews: 0,
+  accuracy: 0,
 };
+
+function QuickIconButton({
+  source,
+  label,
+  onPress,
+  delay = 0,
+}: {
+  source: ImageSourcePropType;
+  label: string;
+  onPress: () => void;
+  delay?: number;
+}) {
+  const idle = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(idle, {toValue: 1, duration: 1550, useNativeDriver: true}),
+        Animated.timing(idle, {toValue: 0, duration: 1550, useNativeDriver: true}),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [delay, idle]);
+
+  const translateY = idle.interpolate({inputRange: [0, 1], outputRange: [0, -4]});
+  const breathe = idle.interpolate({inputRange: [0, 1], outputRange: [1, 1.025]});
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPressIn={() => Animated.spring(press, {toValue: 0.93, useNativeDriver: true, speed: 28, bounciness: 4}).start()}
+      onPressOut={() => Animated.spring(press, {toValue: 1, useNativeDriver: true, speed: 28, bounciness: 6}).start()}
+      onPress={onPress}
+      style={styles.quickButton}>
+      <Animated.View style={[styles.quickAnimated, {transform: [{translateY}, {scale: Animated.multiply(breathe, press)}]}]}>
+        <Image source={source} resizeMode="contain" style={styles.quickImage} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function MetricRow({label, value}: {label: string; value: string | number}) {
+  return (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricRowLabel}>{label}</Text>
+      <Text style={styles.metricRowValue}>{value}</Text>
+    </View>
+  );
+}
+
+function SummaryModal({
+  visible,
+  title,
+  onClose,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const fade = useMemo(() => new Animated.Value(0), []);
+
+  React.useEffect(() => {
+    if (visible) {
+      fade.setValue(0);
+      Animated.timing(fade, {toValue: 1, duration: 180, useNativeDriver: true}).start();
+    }
+  }, [fade, visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Animated.View
+          onStartShouldSetResponder={() => true}
+          style={[styles.modalCard, shadow, {opacity: fade, transform: [{scale: fade.interpolate({inputRange: [0, 1], outputRange: [0.96, 1]})}]}]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="关闭弹窗" onPress={onClose} style={styles.closeButton}>
+            <Icon name="close" size={24} color={colors.ink} />
+          </Pressable>
+          <Text style={styles.modalTitle}>{title}</Text>
+          {children}
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
 
 export function HomeScreen({navigation}: Props) {
   const metrics = useWindowDimensions();
-  const compact = isSmallPhone(metrics);
-  const [importLevel, setImportLevel] = useState<JlptLevel>('N5');
-  const [clearLevel, setClearLevel] = useState<JlptLevel>('N5');
-  const [importing, setImporting] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const insets = useSafeAreaInsets();
+  const compact = isSmallPhone(metrics) || metrics.height < 720;
+  const tiny = metrics.height < 650;
+  const [stats, setStats] = useState<StudyStats>(emptyStats);
+  const [levelProgress, setLevelProgress] = useState<LevelProgressSummary[]>([]);
+  const [todayVisible, setTodayVisible] = useState(false);
+  const [progressVisible, setProgressVisible] = useState(false);
+  const [difficultyVisible, setDifficultyVisible] = useState(false);
 
-  const handleImport = async () => {
-    console.log('[Import] button pressed');
-    if (importing) {
-      console.log('[Import] ignored duplicate tap');
-      return;
-    }
-    setImporting(true);
-    try {
-      console.log('[Import] opening picker');
-      const [file] = await pick({
-        mode: 'import',
-        type: [types.csv, types.plainText, 'text/tab-separated-values', 'application/octet-stream', types.allFiles],
-        allowMultiSelection: false,
+  const refreshStats = useCallback(() => {
+    getStudyStats()
+      .then(setStats)
+      .catch(error => {
+        console.error('Load study stats failed', error);
+        setStats(emptyStats);
       });
-      if (!file) {
-        Alert.alert('导入取消', '没有选择文件。');
-        return;
-      }
-      const readableUri = await getReadableUri(file);
-      console.log('[Import] reading file');
-      const content = await readTextFile(readableUri);
-      if (!content.trim()) {
-        Alert.alert('导入失败', '选择的文件是空文件。');
-        return;
-      }
-      console.log('[Import] parsing csv text', {characters: content.length, selectedLevel: importLevel});
-      const parsed = parseVocabularyCsv(content, importLevel);
-      parsed.result.messages.forEach(message => console.log('[Import]', message));
-      if (parsed.words.length === 0) {
-        Alert.alert('没有可导入的单词', `已导入 0 条\n跳过 ${parsed.result.skipped} 条\n重复 ${parsed.result.duplicates} 条\n无效 ${parsed.result.failed} 条\n等级不一致 ${parsed.result.levelMismatch} 条`);
-        return;
-      }
-      console.log('[Import] inserting into sqlite', {rows: parsed.words.length});
-      const dbResult = await importVocabulary(parsed.words);
-      const skipped = parsed.result.skipped + dbResult.skipped;
-      const duplicates = parsed.result.duplicates + dbResult.duplicates;
-      const failed = parsed.result.failed + dbResult.failed;
-      [...dbResult.messages].forEach(message => console.log('[Import]', message));
-      Alert.alert('导入成功', `已导入 ${dbResult.inserted} 条\n跳过 ${skipped} 条\n重复 ${duplicates} 条\n无效 ${failed} 条\n等级不一致 ${parsed.result.levelMismatch} 条`);
-    } catch (error) {
-      if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) {
-        console.log('[Import] picker cancelled');
-        return;
-      }
-      console.error('[Import] failed', error);
-      Alert.alert('导入失败', error instanceof Error ? error.message : '文件读取或导入失败，请检查 CSV/TSV 格式。');
-    } finally {
-      setImporting(false);
-    }
+    getLevelProgressSummaries()
+      .then(setLevelProgress)
+      .catch(error => {
+        console.error('Load level progress failed', error);
+        setLevelProgress([]);
+      });
+  }, []);
+
+  useFocusEffect(refreshStats);
+
+  const completionPercent = Math.min(100, Math.round((stats.reviewedToday / Math.max(1, stats.dailyGoal)) * 100));
+  const levelsWithData = levelProgress.filter(item => item.totalWords > 0);
+
+  const startStudy = () => {
+    setDifficultyVisible(true);
   };
 
-  const confirmClearLevel = () => {
-    Alert.alert('确认清除', `将清除 ${clearLevel} 的所有单词。此操作不可撤销。`, [
-      {text: '取消', style: 'cancel'},
-      {
-        text: '确认清除',
-        style: 'destructive',
-        onPress: async () => {
-          setClearing(true);
-          try {
-            const count = await clearWordsByLevel(clearLevel);
-            Alert.alert('清除完成', `已删除 ${count} 条 ${clearLevel} 单词。`);
-          } catch (error) {
-            console.error('Clear level failed', error);
-            Alert.alert('清除失败', '无法清除该等级单词，请稍后重试。');
-          } finally {
-            setClearing(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const confirmClearAll = () => {
-    Alert.alert('危险操作', '将清空全部单词数据，但保留数据库表。确定继续吗？', [
-      {text: '取消', style: 'cancel'},
-      {
-        text: '再次确认清空',
-        style: 'destructive',
-        onPress: async () => {
-          setClearing(true);
-          try {
-            const count = await clearAllWords();
-            Alert.alert('清空完成', `已删除 ${count} 条单词。`);
-          } catch (error) {
-            console.error('Clear all failed', error);
-            Alert.alert('清空失败', '无法清空单词数据，请稍后重试。');
-          } finally {
-            setClearing(false);
-          }
-        },
-      },
-    ]);
+  const chooseLevel = (level: JlptLevel) => {
+    setDifficultyVisible(false);
+    navigation.navigate('Chapters', {level});
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <Dots />
-      <View style={styles.page}>
-        <View style={[styles.stack, compact && styles.stackCompact]}>
-          <Logo />
-          <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>楽しく日本語を学ぼう！</Text>
-          <View style={styles.underline} />
-          <CartoonButton label="开始" accessibilityLabel="开始学习" onPress={() => navigation.navigate('Levels')} style={styles.startButton} />
-          <View style={styles.manager}>
-            <Text style={styles.managerTitle}>★ 单词管理 ★</Text>
-            <View style={styles.row}>
-              <LevelDropdown value={importLevel} onChange={setImportLevel} accessibilityLabel="选择导入 JLPT 等级" />
-              <CartoonButton label="导入" color={colors.blue} onPress={handleImport} loading={importing} disabled={importing} accessibilityLabel="导入单词文件" style={styles.sideButton} />
-            </View>
-            <View style={styles.row}>
-              <LevelDropdown value={clearLevel} onChange={setClearLevel} accessibilityLabel="选择清除 JLPT 等级" />
-              <CartoonButton label="清除" color={colors.yellow} textColor={colors.ink} onPress={confirmClearLevel} disabled={clearing} accessibilityLabel="清除所选等级单词" style={styles.sideButton} />
-            </View>
-            <CartoonButton label="清空所有单词" onPress={confirmClearAll} disabled={clearing} accessibilityLabel="清空所有单词" style={styles.fullButton} />
-          </View>
+      <View style={[styles.quickStack, {top: Math.max(8, insets.top + 2)}]}>
+        <QuickIconButton source={todayPlanIcon} label="今日计划" onPress={() => setTodayVisible(true)} />
+        <QuickIconButton source={studyProgressIcon} label="学习进度" onPress={() => setProgressVisible(true)} delay={380} />
+      </View>
+      <View style={[styles.page, tiny && styles.pageTiny]}>
+        <HomeMascot compact={compact} />
+        <View style={[styles.actions, tiny && styles.actionsTiny]}>
+          <CartoonButton
+            label="开始学习"
+            color={colors.red}
+            accessibilityLabel="开始学习"
+            onPress={startStudy}
+            style={tiny ? styles.homeButtonTiny : styles.homeButton}
+          />
+          <CartoonButton
+            label="学习入口"
+            color={colors.yellow}
+            textColor={colors.ink}
+            accessibilityLabel="打开学习入口"
+            onPress={() => navigation.navigate('StudyEntry')}
+            style={tiny ? styles.homeButtonTiny : styles.homeButton}
+          />
+          <CartoonButton
+            label="词库与回顾"
+            color={colors.blue}
+            accessibilityLabel="打开词库与回顾"
+            onPress={() => navigation.navigate('LibraryEntry')}
+            style={tiny ? styles.homeButtonTiny : styles.homeButton}
+          />
+          <CartoonButton
+            label="设置"
+            color={colors.white}
+            textColor={colors.ink}
+            accessibilityLabel="打开设置"
+            onPress={() => navigation.navigate('Settings')}
+            style={tiny ? styles.homeButtonTiny : styles.homeButton}
+          />
         </View>
       </View>
+      <SummaryModal visible={difficultyVisible} title="选择难度" onClose={() => setDifficultyVisible(false)}>
+        <Text style={styles.modalHint}>先选一个 JLPT 等级，再进入对应的学习内容。</Text>
+        <View style={styles.difficultyGrid}>
+          {JLPT_LEVELS.map(level => {
+            const summary = levelProgress.find(item => item.jlpt_level === level);
+            return (
+              <Pressable
+                key={level}
+                accessibilityRole="button"
+                accessibilityLabel={`选择学习难度 ${level}`}
+                onPress={() => chooseLevel(level)}
+                style={({pressed}) => [styles.difficultyButton, pressed && styles.modalPressed]}>
+                <Text style={styles.difficultyLevel}>{level}</Text>
+                <Text style={styles.difficultyMeta}>
+                  {summary?.totalWords ? `${summary.studiedWords}/${summary.totalWords}` : '0/0'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <CartoonButton
+          label="查看全部等级"
+          color={colors.white}
+          textColor={colors.ink}
+          accessibilityLabel="查看全部 JLPT 等级"
+          onPress={() => {
+            setDifficultyVisible(false);
+            navigation.navigate('Levels');
+          }}
+          style={styles.modalSecondaryButton}
+        />
+      </SummaryModal>
+      <SummaryModal visible={todayVisible} title="今日计划" onClose={() => setTodayVisible(false)}>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, {width: `${completionPercent}%`}]} />
+        </View>
+        <Text style={styles.modalHint}>今日目标 {Math.min(stats.reviewedToday, stats.dailyGoal)} / {stats.dailyGoal}</Text>
+        <MetricRow label="已完成数量" value={stats.reviewedToday} />
+        <MetricRow label="待复习数量" value={stats.dueWords} />
+        <MetricRow label="新词数量" value={stats.newWords} />
+        <MetricRow label="困难词数量" value={stats.difficultWords} />
+      </SummaryModal>
+      <SummaryModal visible={progressVisible} title="学习进度" onClose={() => setProgressVisible(false)}>
+        <MetricRow label="已学习单词" value={`${stats.studiedWords} / ${stats.totalWords}`} />
+        <MetricRow label="已掌握" value={stats.masteredWords} />
+        <MetricRow label="学习中" value={stats.learningWords} />
+        <MetricRow label="收藏" value={stats.favoriteWords} />
+        <MetricRow label="总正确率" value={`${stats.accuracy}%`} />
+        <MetricRow label="连续学习" value={`${stats.currentStreak} 天`} />
+        {levelsWithData.length > 0 && (
+          <View style={styles.levelList}>
+            {levelsWithData.map(item => (
+              <Text key={item.jlpt_level} style={styles.levelLine}>
+                {item.jlpt_level}  {item.studiedWords}/{item.totalWords}  掌握 {item.masteredWords}
+              </Text>
+            ))}
+          </View>
+        )}
+      </SummaryModal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.cream, position: 'relative'},
-  page: {flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 34, zIndex: 2, elevation: 2},
-  stack: {width: '100%', maxWidth: 520, alignSelf: 'center', alignItems: 'center', gap: 10},
-  stackCompact: {gap: 7},
-  subtitle: {color: colors.ink, fontSize: 21, fontWeight: '900', marginTop: 0, textAlign: 'center'},
-  subtitleCompact: {fontSize: 18},
-  underline: {width: '68%', height: 7, backgroundColor: '#F7D887', borderRadius: 8, marginBottom: 2},
-  startButton: {width: '88%', minHeight: 56, borderRadius: 22, marginTop: 2, marginBottom: 4},
-  manager: {width: '100%', borderWidth: 4, borderColor: colors.ink, borderRadius: 20, padding: 12, backgroundColor: 'rgba(255,253,247,0.9)'},
-  managerTitle: {color: colors.ink, fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 8},
-  row: {flexDirection: 'row', gap: 10, marginBottom: 10},
-  sideButton: {width: 96, borderRadius: 16},
-  fullButton: {width: '100%', borderRadius: 18},
+  quickStack: {position: 'absolute', right: 16, zIndex: 4, elevation: 4, gap: 12},
+  quickButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickAnimated: {width: 66, height: 66, alignItems: 'center', justifyContent: 'center'},
+  quickImage: {width: 64, height: 64},
+  page: {
+    flex: 1,
+    zIndex: 2,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingTop: 22,
+    paddingBottom: 22,
+  },
+  pageTiny: {paddingHorizontal: 28, paddingTop: 10, paddingBottom: 14},
+  actions: {width: '100%', maxWidth: 348, alignItems: 'center', gap: 12, marginTop: 30},
+  actionsTiny: {gap: 9, marginTop: 18},
+  homeButton: {width: '100%', minHeight: 58, borderRadius: 22},
+  homeButtonTiny: {width: '100%', minHeight: 52, borderRadius: 22},
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(33, 27, 21, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 4,
+    borderColor: colors.ink,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    padding: 18,
+    gap: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  modalTitle: {color: colors.ink, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 4},
+  progressTrack: {height: 18, borderWidth: 3, borderColor: colors.ink, borderRadius: 9, overflow: 'hidden', backgroundColor: '#FFF3D0'},
+  progressFill: {height: '100%', backgroundColor: colors.green},
+  modalHint: {color: colors.muted, fontSize: 13, fontWeight: '900', textAlign: 'center'},
+  metricRow: {
+    minHeight: 40,
+    borderRadius: 14,
+    backgroundColor: '#FFF3D0',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  metricRowLabel: {color: colors.ink, fontSize: 14, fontWeight: '900'},
+  metricRowValue: {color: colors.red, fontSize: 17, fontWeight: '900'},
+  levelList: {marginTop: 2, gap: 4},
+  levelLine: {color: colors.ink, fontSize: 12, fontWeight: '800', textAlign: 'center'},
+  difficultyGrid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, paddingVertical: 4},
+  difficultyButton: {
+    width: 96,
+    minHeight: 78,
+    borderWidth: 4,
+    borderColor: colors.ink,
+    borderRadius: 20,
+    backgroundColor: '#FFF3D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  difficultyLevel: {color: colors.red, fontSize: 26, fontWeight: '900'},
+  difficultyMeta: {color: colors.muted, fontSize: 12, fontWeight: '900'},
+  modalPressed: {transform: [{translateY: 3}], backgroundColor: colors.yellow},
+  modalSecondaryButton: {alignSelf: 'center', minWidth: 190, borderRadius: 18, marginTop: 2},
 });

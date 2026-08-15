@@ -17,7 +17,7 @@ function InfoRow({label, color, children}: {label: string; color: string; childr
   );
 }
 
-export function WordCard({word}: {word: VocabularyWord}) {
+export function WordCard({word, showAnswer = true}: {word: VocabularyWord; showAnswer?: boolean}) {
   const [speaking, setSpeaking] = useState(false);
   const title = composeDisplayWord(word);
   const speak = async (text: string) => {
@@ -37,6 +37,14 @@ export function WordCard({word}: {word: VocabularyWord}) {
       <View style={styles.dashedLine} />
       {!!word.kana && <Text style={styles.kana}>{word.kana}</Text>}
       {!!word.romaji && <Text style={styles.romaji}>{word.romaji}</Text>}
+      {!showAnswer && (
+        <View style={styles.hiddenAnswer}>
+          <Icon name="eye-off" size={22} color={colors.ink} />
+          <Text style={styles.hiddenText}>答案已隐藏</Text>
+        </View>
+      )}
+      {showAnswer && (
+        <>
       <View style={styles.solidLine} />
       {!!word.meaning_zh && (
         <InfoRow label="中文意思" color={colors.yellow}>{splitSemicolonText(word.meaning_zh).map(part => <Text key={part} style={styles.meaning}>{part}</Text>)}</InfoRow>
@@ -57,6 +65,8 @@ export function WordCard({word}: {word: VocabularyWord}) {
       )}
       {!!word.example_zh && <InfoRow label="中文例句" color={colors.yellow}><Text style={styles.exampleText}>{word.example_zh}</Text></InfoRow>}
       {!!word.example_en && <InfoRow label="English Example" color={colors.blue}><Text style={styles.exampleText}>{word.example_en}</Text></InfoRow>}
+        </>
+      )}
     </View>
   );
 }
@@ -71,6 +81,18 @@ const styles = StyleSheet.create({
   solidLine: {height: 3, backgroundColor: '#F5D073', borderRadius: 2, marginVertical: 8},
   kana: {color: colors.ink, fontWeight: '900', fontSize: 24},
   romaji: {color: colors.muted, fontWeight: '900', fontSize: 17, marginTop: 1},
+  hiddenAnswer: {
+    minHeight: 82,
+    borderWidth: 3,
+    borderColor: colors.ink,
+    borderRadius: 16,
+    backgroundColor: '#FFF3D0',
+    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  hiddenText: {color: colors.ink, fontSize: 16, fontWeight: '900'},
   infoRow: {flexDirection: 'row', gap: 8, marginBottom: 7, alignItems: 'flex-start'},
   labelPill: {minWidth: 76, minHeight: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6},
   labelText: {color: colors.ink, fontWeight: '900', fontSize: 11, textAlign: 'center'},

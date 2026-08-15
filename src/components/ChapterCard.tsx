@@ -18,8 +18,8 @@ export function ChapterCard({item, index, onPress}: {item: ChapterSummary; index
       style={({pressed}) => [styles.card, shadow, {backgroundColor}, pressed && styles.pressed]}>
       <View style={styles.content}>
         <Text style={[styles.chapter, {color: darkText ? colors.ink : colors.white}]}>{item.chapter}</Text>
-        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.sessionCount} Sessions</Text>
-        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.wordCount} words</Text>
+        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.sessionCount} 个 Session</Text>
+        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.wordCount} 个单词</Text>
       </View>
       <Icon name="arrow-forward" size={30} color={darkText ? colors.ink : colors.white} />
     </Pressable>

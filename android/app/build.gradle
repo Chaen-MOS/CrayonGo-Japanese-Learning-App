@@ -10,6 +10,22 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def releaseSigningValue = { name ->
+    keystoreProperties[name] ?: System.getenv(name)
+}
+
+def releaseStoreFilePath = releaseSigningValue("MYAPP_UPLOAD_STORE_FILE")
+def releaseKeyAlias = releaseSigningValue("MYAPP_UPLOAD_KEY_ALIAS")
+def releaseStorePassword = releaseSigningValue("MYAPP_UPLOAD_STORE_PASSWORD")
+def releaseKeyPassword = releaseSigningValue("MYAPP_UPLOAD_KEY_PASSWORD")
+def releaseSigningConfigured = releaseStoreFilePath && releaseKeyAlias && releaseStorePassword && releaseKeyPassword
+
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.hasTask(":app:assembleRelease") && !releaseSigningConfigured) {
+        throw new GradleException("Release signing is not configured. Create android/keystore.properties or set MYAPP_UPLOAD_STORE_FILE, MYAPP_UPLOAD_KEY_ALIAS, MYAPP_UPLOAD_STORE_PASSWORD, and MYAPP_UPLOAD_KEY_PASSWORD.")
+    }
+}
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -102,11 +118,11 @@ android {
             keyPassword 'android'
         }
         release {
-            if (keystorePropertiesFile.exists()) {
-                storeFile file(keystoreProperties["MYAPP_UPLOAD_STORE_FILE"])
-                storePassword keystoreProperties["MYAPP_UPLOAD_STORE_PASSWORD"]
-                keyAlias keystoreProperties["MYAPP_UPLOAD_KEY_ALIAS"]
-                keyPassword keystoreProperties["MYAPP_UPLOAD_KEY_PASSWORD"]
+            if (releaseSigningConfigured) {
+                storeFile file(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
             }
         }
     }
