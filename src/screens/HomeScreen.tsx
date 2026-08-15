@@ -7,16 +7,28 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CartoonButton} from '../components/CartoonButton';
 import {Dots} from '../components/Decorations';
 import {HomeMascot} from '../components/HomeMascot';
+import {APP_VERSION} from '../constants/app';
 import {colors, shadow} from '../constants/theme';
 import {getLevelProgressSummaries, getStudyStats} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {JLPT_LEVELS, JlptLevel, LevelProgressSummary, StudyStats} from '../types/vocabulary';
 import {isSmallPhone} from '../utils/responsive';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const todayPlanIcon = require('../../image/todayplan.png') as ImageSourcePropType;
-const studyProgressIcon = require('../../image/studyprogress.png') as ImageSourcePropType;
+const homeAssets = {
+  zh: {
+    mascot: require('../../image/home-family-mascot.png') as ImageSourcePropType,
+    todayPlan: require('../../image/todayplan.png') as ImageSourcePropType,
+    studyProgress: require('../../image/studyprogress.png') as ImageSourcePropType,
+  },
+  en: {
+    mascot: require('../../image/home-family-mascot_en.png') as ImageSourcePropType,
+    todayPlan: require('../../image/todayplan_en.png') as ImageSourcePropType,
+    studyProgress: require('../../image/studyprogress_en.png') as ImageSourcePropType,
+  },
+};
 
 const emptyStats: StudyStats = {
   totalWords: 0,
@@ -91,11 +103,13 @@ function SummaryModal({
   visible,
   title,
   onClose,
+  closeLabel,
   children,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
+  closeLabel: string;
   children: React.ReactNode;
 }) {
   const fade = useMemo(() => new Animated.Value(0), []);
@@ -113,7 +127,7 @@ function SummaryModal({
         <Animated.View
           onStartShouldSetResponder={() => true}
           style={[styles.modalCard, shadow, {opacity: fade, transform: [{scale: fade.interpolate({inputRange: [0, 1], outputRange: [0.96, 1]})}]}]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="关闭弹窗" onPress={onClose} style={styles.closeButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={styles.closeButton}>
             <Icon name="close" size={24} color={colors.ink} />
           </Pressable>
           <Text style={styles.modalTitle}>{title}</Text>
@@ -125,6 +139,7 @@ function SummaryModal({
 }
 
 export function HomeScreen({navigation}: Props) {
+  const {language, t} = useI18n();
   const metrics = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compact = isSmallPhone(metrics) || metrics.height < 720;
@@ -154,6 +169,7 @@ export function HomeScreen({navigation}: Props) {
 
   const completionPercent = Math.min(100, Math.round((stats.reviewedToday / Math.max(1, stats.dailyGoal)) * 100));
   const levelsWithData = levelProgress.filter(item => item.totalWords > 0);
+  const assets = homeAssets[language];
 
   const startStudy = () => {
     setDifficultyVisible(true);
@@ -168,46 +184,47 @@ export function HomeScreen({navigation}: Props) {
     <SafeAreaView style={styles.safe}>
       <Dots />
       <View style={[styles.quickStack, {top: Math.max(8, insets.top + 2)}]}>
-        <QuickIconButton source={todayPlanIcon} label="今日计划" onPress={() => setTodayVisible(true)} />
-        <QuickIconButton source={studyProgressIcon} label="学习进度" onPress={() => setProgressVisible(true)} delay={380} />
+        <QuickIconButton source={assets.todayPlan} label={t.home.todayPlan} onPress={() => setTodayVisible(true)} />
+        <QuickIconButton source={assets.studyProgress} label={t.home.studyProgress} onPress={() => setProgressVisible(true)} delay={380} />
       </View>
       <View style={[styles.page, tiny && styles.pageTiny]}>
-        <HomeMascot compact={compact} />
+        <HomeMascot compact={compact} source={assets.mascot} />
         <View style={[styles.actions, tiny && styles.actionsTiny]}>
           <CartoonButton
-            label="开始学习"
+            label={t.home.startLearning}
             color={colors.red}
-            accessibilityLabel="开始学习"
+            accessibilityLabel={t.home.startLearning}
             onPress={startStudy}
             style={tiny ? styles.homeButtonTiny : styles.homeButton}
           />
           <CartoonButton
-            label="学习入口"
+            label={t.home.study}
             color={colors.yellow}
             textColor={colors.ink}
-            accessibilityLabel="打开学习入口"
+            accessibilityLabel={t.home.open(t.home.study)}
             onPress={() => navigation.navigate('StudyEntry')}
             style={tiny ? styles.homeButtonTiny : styles.homeButton}
           />
           <CartoonButton
-            label="词库与回顾"
+            label={t.home.vocabularyReview}
             color={colors.blue}
-            accessibilityLabel="打开词库与回顾"
+            accessibilityLabel={t.home.open(t.home.vocabularyReview)}
             onPress={() => navigation.navigate('LibraryEntry')}
             style={tiny ? styles.homeButtonTiny : styles.homeButton}
           />
           <CartoonButton
-            label="设置"
+            label={t.home.settings}
             color={colors.white}
             textColor={colors.ink}
-            accessibilityLabel="打开设置"
+            accessibilityLabel={t.home.open(t.home.settings)}
             onPress={() => navigation.navigate('Settings')}
             style={tiny ? styles.homeButtonTiny : styles.homeButton}
           />
         </View>
       </View>
-      <SummaryModal visible={difficultyVisible} title="选择难度" onClose={() => setDifficultyVisible(false)}>
-        <Text style={styles.modalHint}>先选一个 JLPT 等级，再进入对应的学习内容。</Text>
+      <Text style={[styles.versionLabel, {bottom: Math.max(8, insets.bottom + 6)}]}>v{APP_VERSION}</Text>
+      <SummaryModal visible={difficultyVisible} title={t.home.selectLevel} closeLabel={t.home.closeModal} onClose={() => setDifficultyVisible(false)}>
+        <Text style={styles.modalHint}>{t.home.selectLevelHint}</Text>
         <View style={styles.difficultyGrid}>
           {JLPT_LEVELS.map(level => {
             const summary = levelProgress.find(item => item.jlpt_level === level);
@@ -215,7 +232,7 @@ export function HomeScreen({navigation}: Props) {
               <Pressable
                 key={level}
                 accessibilityRole="button"
-                accessibilityLabel={`选择学习难度 ${level}`}
+                accessibilityLabel={`${t.home.selectLevel} ${level}`}
                 onPress={() => chooseLevel(level)}
                 style={({pressed}) => [styles.difficultyButton, pressed && styles.modalPressed]}>
                 <Text style={styles.difficultyLevel}>{level}</Text>
@@ -227,10 +244,10 @@ export function HomeScreen({navigation}: Props) {
           })}
         </View>
         <CartoonButton
-          label="查看全部等级"
+          label={t.home.viewAllLevels}
           color={colors.white}
           textColor={colors.ink}
-          accessibilityLabel="查看全部 JLPT 等级"
+          accessibilityLabel={t.home.viewAllLevels}
           onPress={() => {
             setDifficultyVisible(false);
             navigation.navigate('Levels');
@@ -238,28 +255,28 @@ export function HomeScreen({navigation}: Props) {
           style={styles.modalSecondaryButton}
         />
       </SummaryModal>
-      <SummaryModal visible={todayVisible} title="今日计划" onClose={() => setTodayVisible(false)}>
+      <SummaryModal visible={todayVisible} title={t.home.todayPlan} closeLabel={t.home.closeModal} onClose={() => setTodayVisible(false)}>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, {width: `${completionPercent}%`}]} />
         </View>
-        <Text style={styles.modalHint}>今日目标 {Math.min(stats.reviewedToday, stats.dailyGoal)} / {stats.dailyGoal}</Text>
-        <MetricRow label="已完成数量" value={stats.reviewedToday} />
-        <MetricRow label="待复习数量" value={stats.dueWords} />
-        <MetricRow label="新词数量" value={stats.newWords} />
-        <MetricRow label="困难词数量" value={stats.difficultWords} />
+        <Text style={styles.modalHint}>{t.home.dailyGoal} {Math.min(stats.reviewedToday, stats.dailyGoal)} / {stats.dailyGoal}</Text>
+        <MetricRow label={t.home.completed} value={stats.reviewedToday} />
+        <MetricRow label={t.home.dueForReview} value={stats.dueWords} />
+        <MetricRow label={t.home.newWords} value={stats.newWords} />
+        <MetricRow label={t.home.difficultWords} value={stats.difficultWords} />
       </SummaryModal>
-      <SummaryModal visible={progressVisible} title="学习进度" onClose={() => setProgressVisible(false)}>
-        <MetricRow label="已学习单词" value={`${stats.studiedWords} / ${stats.totalWords}`} />
-        <MetricRow label="已掌握" value={stats.masteredWords} />
-        <MetricRow label="学习中" value={stats.learningWords} />
-        <MetricRow label="收藏" value={stats.favoriteWords} />
-        <MetricRow label="总正确率" value={`${stats.accuracy}%`} />
-        <MetricRow label="连续学习" value={`${stats.currentStreak} 天`} />
+      <SummaryModal visible={progressVisible} title={t.home.studyProgress} closeLabel={t.home.closeModal} onClose={() => setProgressVisible(false)}>
+        <MetricRow label={t.home.studiedWords} value={`${stats.studiedWords} / ${stats.totalWords}`} />
+        <MetricRow label={t.home.mastered} value={stats.masteredWords} />
+        <MetricRow label={t.home.learning} value={stats.learningWords} />
+        <MetricRow label={t.home.favorites} value={stats.favoriteWords} />
+        <MetricRow label={t.home.accuracy} value={`${stats.accuracy}%`} />
+        <MetricRow label={t.home.studyStreak} value={t.common.days(stats.currentStreak)} />
         {levelsWithData.length > 0 && (
           <View style={styles.levelList}>
             {levelsWithData.map(item => (
               <Text key={item.jlpt_level} style={styles.levelLine}>
-                {item.jlpt_level}  {item.studiedWords}/{item.totalWords}  掌握 {item.masteredWords}
+                {item.jlpt_level}  {item.studiedWords}/{item.totalWords}  {t.home.levelMastered(item.masteredWords)}
               </Text>
             ))}
           </View>
@@ -272,6 +289,16 @@ export function HomeScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.cream, position: 'relative'},
   quickStack: {position: 'absolute', right: 16, zIndex: 4, elevation: 4, gap: 12},
+  versionLabel: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 3,
+    elevation: 3,
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    opacity: 0.72,
+  },
   quickButton: {
     width: 72,
     height: 72,

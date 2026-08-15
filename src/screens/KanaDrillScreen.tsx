@@ -14,17 +14,19 @@ import {loadPracticeWordsForSource, practiceSourceLabel} from '../services/pract
 import {speakJapanese, stopSpeech} from '../services/speech';
 import {MultipleChoiceQuestion} from '../types/practice';
 import {buildKanaDrillQuestions} from '../utils/kanaDrill';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KanaDrill'>;
 
 export function KanaDrillScreen({navigation, route}: Props) {
+  const {t} = useI18n();
   const [questions, setQuestions] = useState<MultipleChoiceQuestion[]>([]);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState({correct: 0, total: 0});
   const source = route.params?.source;
-  const sourceLabel = practiceSourceLabel(source);
+  const sourceLabel = practiceSourceLabel(source, t);
 
   useFocusEffect(
     useCallback(() => {
@@ -88,28 +90,28 @@ export function KanaDrillScreen({navigation, route}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="假名练习" subtitle={`假名 → 日语 · ${sourceLabel}`} />
+        <ScreenHeader title={t.practice.kanaTitle} subtitle={t.practice.kanaSubtitle(sourceLabel)} />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : !current ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>还不能生成假名练习</Text>
-            <Text style={styles.emptyText}>请先导入至少两个带 kana 的单词。</Text>
-            <CartoonButton label="返回首页" onPress={() => navigation.popToTop()} accessibilityLabel="返回首页导入单词" />
+            <Text style={styles.emptyTitle}>{t.practice.kanaEmptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.practice.kanaEmptyText}</Text>
+            <CartoonButton label={t.common.backHome} onPress={() => navigation.popToTop()} accessibilityLabel={t.chapters.backToImport} />
           </View>
         ) : (
           <View style={styles.practice}>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreText}>{progress}</Text>
-              <Text style={styles.scoreText}>得分 {score.correct}/{score.total}</Text>
+              <Text style={styles.scoreText}>{t.common.score} {score.correct}/{score.total}</Text>
             </View>
             <View style={[styles.questionCard, shadow]}>
               <Text style={styles.questionLabel}>{current.word.jlpt_level} · {current.word.chapter} · {current.word.session}</Text>
               <Text style={styles.prompt}>{current.prompt}</Text>
-              <Text style={styles.hint}>选择对应的日语单词</Text>
+              <Text style={styles.hint}>{t.practice.chooseJapaneseWord}</Text>
             </View>
             <View style={styles.options}>
               {current.options.map(option => {
@@ -119,7 +121,7 @@ export function KanaDrillScreen({navigation, route}: Props) {
                   <Pressable
                     key={option}
                     accessibilityRole="button"
-                    accessibilityLabel={`选择 ${option}`}
+                    accessibilityLabel={t.common.chooseOption(option)}
                     disabled={answered}
                     onPress={() => answer(option)}
                     style={({pressed}) => [
@@ -136,19 +138,19 @@ export function KanaDrillScreen({navigation, route}: Props) {
             </View>
             {answered && (
               <View style={styles.feedback}>
-                <Text style={styles.feedbackText}>{isCorrect ? '答对了！' : `正确答案：${current.answer}`}</Text>
+                <Text style={styles.feedbackText}>{isCorrect ? t.common.correct : t.common.correctAnswer(current.answer)}</Text>
                 <CartoonButton
                   label=""
                   color={colors.yellow}
                   textColor={colors.ink}
                   icon={<Icon name="volume-high" size={22} color={colors.ink} />}
                   onPress={() => speakJapanese(current.answer)}
-                  accessibilityLabel="播放正确答案发音"
+                  accessibilityLabel={t.practice.speakCorrectAnswer}
                   style={styles.soundButton}
                 />
                 <CartoonButton
-                  label={index >= questions.length - 1 ? '完成' : '下一题'}
-                  accessibilityLabel={index >= questions.length - 1 ? '完成假名练习' : '进入下一题'}
+                  label={index >= questions.length - 1 ? t.common.complete : t.common.nextQuestion}
+                  accessibilityLabel={index >= questions.length - 1 ? t.practice.finishKana : t.common.nextQuestion}
                   onPress={index >= questions.length - 1 ? () => navigation.goBack() : next}
                   style={styles.nextButton}
                 />

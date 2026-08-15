@@ -12,13 +12,14 @@ import {getLevelProgressSummaries} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {JLPT_LEVELS, JlptLevel, LevelProgressSummary} from '../types/vocabulary';
 import {isSmallPhone} from '../utils/responsive';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Levels'>;
 
-const labels: Record<JlptLevel, string> = {N1: '最上级', N2: '上级', N3: '中级', N4: '初中级', N5: '入门'};
 const levelColors: Record<JlptLevel, string> = {N1: colors.red, N2: colors.yellow, N3: colors.blue, N4: colors.green, N5: colors.purple};
 
 export function LevelScreen({navigation}: Props) {
+  const {t} = useI18n();
   const metrics = useWindowDimensions();
   const compact = isSmallPhone(metrics);
   const [summaries, setSummaries] = useState<Record<JlptLevel, LevelProgressSummary>>({} as Record<JlptLevel, LevelProgressSummary>);
@@ -50,20 +51,20 @@ export function LevelScreen({navigation}: Props) {
     <SafeAreaView style={styles.safe}>
       <Dots />
       <View style={styles.page}>
-        <CartoonButton label="" color={colors.white} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel="返回首页" style={styles.back} />
+        <CartoonButton label="" color={colors.white} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel={t.levels.back} style={styles.back} />
         <View style={[styles.stack, compact && styles.stackCompact]}>
           <Logo small />
-          <Text style={[styles.title, compact && styles.titleCompact]}>选择 JLPT 等级</Text>
+          <Text style={[styles.title, compact && styles.titleCompact]}>{t.levels.title}</Text>
           <View style={styles.underline} />
-          <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>从想学习的等级开始吧</Text>
+          <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{t.levels.subtitle}</Text>
           <View style={[styles.list, compact && styles.listCompact]}>
             {JLPT_LEVELS.map(level => (
-              <Pressable key={level} accessibilityRole="button" accessibilityLabel={`选择 ${level} ${labels[level]}`} onPress={() => navigation.navigate('Chapters', {level})} style={({pressed}) => [styles.levelButton, compact && styles.levelButtonCompact, shadow, {backgroundColor: levelColors[level]}, pressed && styles.pressed]}>
+              <Pressable key={level} accessibilityRole="button" accessibilityLabel={t.levels.select(level, t.levels.labels[level])} onPress={() => navigation.navigate('Chapters', {level})} style={({pressed}) => [styles.levelButton, compact && styles.levelButtonCompact, shadow, {backgroundColor: levelColors[level]}, pressed && styles.pressed]}>
                 <Text style={[styles.levelText, compact && styles.levelTextCompact, level === 'N2' || level === 'N4' ? styles.darkText : styles.lightText]}>{level}</Text>
                 <View style={styles.levelInfo}>
-                  <View style={styles.pill}><Text style={styles.pillText}>{labels[level]}</Text></View>
+                  <View style={styles.pill}><Text style={styles.pillText}>{t.levels.labels[level]}</Text></View>
                   <Text style={[styles.progressText, level === 'N2' || level === 'N4' ? styles.darkText : styles.lightText]}>
-                    已学 {summaries[level]?.studiedWords ?? 0}/{summaries[level]?.totalWords ?? 0} · 掌握 {summaries[level]?.masteredWords ?? 0}
+                    {t.levels.progress(summaries[level]?.studiedWords ?? 0, summaries[level]?.totalWords ?? 0, summaries[level]?.masteredWords ?? 0)}
                   </Text>
                 </View>
                 <Icon name="arrow-forward" size={28} color={level === 'N2' || level === 'N4' ? colors.ink : colors.white} />

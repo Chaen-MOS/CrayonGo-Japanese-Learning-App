@@ -12,6 +12,7 @@ import {getRecentActivity} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {RecentActivityItem} from '../types/vocabulary';
 import {composeDisplayWord} from '../utils/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecentActivity'>;
 
@@ -24,6 +25,7 @@ const formatDate = (value: string) => {
 };
 
 export function RecentActivityScreen({navigation}: Props) {
+  const {t} = useI18n();
   const [items, setItems] = useState<RecentActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,17 +58,17 @@ export function RecentActivityScreen({navigation}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="最近活动" subtitle="刚复习过的单词" />
+        <ScreenHeader title={t.recent.title} subtitle={t.recent.subtitle} />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : items.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>还没有学习记录</Text>
-            <Text style={styles.emptyText}>完成一次复习、选择题或输入练习后，这里会显示最近活动。</Text>
-            <CartoonButton label="开始学习" onPress={() => navigation.navigate('Levels')} accessibilityLabel="选择 JLPT 等级开始学习" />
+            <Text style={styles.emptyTitle}>{t.recent.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.recent.emptyText}</Text>
+            <CartoonButton label={t.recent.startLearning} onPress={() => navigation.navigate('Levels')} accessibilityLabel={t.home.startLearning} />
           </View>
         ) : (
           <FlatList
@@ -80,7 +82,7 @@ export function RecentActivityScreen({navigation}: Props) {
               return (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`打开 ${title} 所在 Session`}
+                  accessibilityLabel={t.recent.openSession(title)}
                   onPress={() =>
                     navigation.navigate('Word', {
                       level: item.jlpt_level,
@@ -98,8 +100,8 @@ export function RecentActivityScreen({navigation}: Props) {
                   </View>
                   <View style={styles.stats}>
                     <Text style={styles.mastery}>{item.mastery}/10</Text>
-                    <Text style={styles.statText}>对 {item.correct_count}</Text>
-                    <Text style={styles.statText}>错 {item.incorrect_count}</Text>
+                    <Text style={styles.statText}>{t.recent.correctCount(item.correct_count)}</Text>
+                    <Text style={styles.statText}>{t.recent.incorrectCount(item.incorrect_count)}</Text>
                   </View>
                 </Pressable>
               );

@@ -1,4 +1,5 @@
 import {getDailyStudyWords, getDifficultWords, getFavoriteWords, getPracticeWords} from '../database/repository';
+import type {Translation} from '../i18n/types';
 import type {PracticeSource} from '../types/practice';
 import type {VocabularyWord} from '../types/vocabulary';
 
@@ -6,17 +7,17 @@ export const defaultPracticeSource: PracticeSource = {type: 'all'};
 
 export const dailyPracticeSource: PracticeSource = {type: 'daily'};
 
-export const practiceSourceLabel = (source?: PracticeSource) => {
+export const practiceSourceLabel = (source: PracticeSource | undefined, t: Translation) => {
   switch (source?.type ?? defaultPracticeSource.type) {
     case 'daily':
-      return '今日队列';
+      return t.study.dailyQueue;
     case 'favorites':
-      return '收藏词';
+      return t.study.favoritesSource;
     case 'difficult':
-      return '困难词';
+      return t.study.difficultSource;
     case 'all':
     default:
-      return '全部词库';
+      return t.study.allVocabulary;
   }
 };
 

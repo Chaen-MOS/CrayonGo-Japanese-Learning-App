@@ -2,14 +2,16 @@ import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {colors, shadow} from '../constants/theme';
 import {SessionSummary} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
 const sessionColors = [colors.red, colors.yellow, colors.green, colors.blue];
 
 export function SessionCard({item, index, onPress}: {item: SessionSummary; index: number; onPress: () => void}) {
+  const {t} = useI18n();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.session}，${item.wordCount} 个单词`}
+      accessibilityLabel={t.sessions.cardLabel(item.session, item.wordCount)}
       onPress={onPress}
       style={({pressed}) => [styles.card, shadow, pressed && styles.pressed]}>
       <View style={[styles.badge, {backgroundColor: sessionColors[index % sessionColors.length]}]}>
@@ -17,8 +19,8 @@ export function SessionCard({item, index, onPress}: {item: SessionSummary; index
       </View>
       <View style={styles.content}>
         <Text style={styles.session}>{item.session}</Text>
-        <Text style={styles.meta}>{item.wordCount} 个单词</Text>
-        <Text style={styles.hint}>点击开始学习</Text>
+        <Text style={styles.meta}>{t.common.wordsCount(item.wordCount)}</Text>
+        <Text style={styles.hint}>{t.sessions.cardHint}</Text>
       </View>
     </Pressable>
   );

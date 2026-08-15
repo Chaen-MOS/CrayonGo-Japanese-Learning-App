@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type {AppLanguage} from '../i18n/types';
 
 const AUTO_PRONUNCIATION_KEY = 'labigo.settings.autoPronunciation';
 const PRONUNCIATION_VOLUME_KEY = 'labigo.settings.pronunciationVolume';
 const PRONUNCIATION_RATE_KEY = 'labigo.settings.pronunciationRate';
 const BGM_ENABLED_KEY = 'labigo.settings.bgmEnabled';
 const BGM_VOLUME_KEY = 'labigo.settings.bgmVolume';
+const LANGUAGE_KEY = 'labigo.settings.language';
 
 export type SoundSettings = {
   bgmEnabled: boolean;
@@ -96,6 +98,24 @@ export const savePronunciationRate = async (rate: number) => {
     await AsyncStorage.setItem(PRONUNCIATION_RATE_KEY, String(Math.max(0.25, Math.min(0.65, rate))));
   } catch (error) {
     console.error('Save pronunciation rate setting failed', error);
+  }
+};
+
+export const loadLanguage = async (): Promise<AppLanguage> => {
+  try {
+    const value = await AsyncStorage.getItem(LANGUAGE_KEY);
+    return value === 'en' ? 'en' : 'zh';
+  } catch (error) {
+    console.error('Load language setting failed', error);
+    return 'zh';
+  }
+};
+
+export const saveLanguage = async (language: AppLanguage) => {
+  try {
+    await AsyncStorage.setItem(LANGUAGE_KEY, language);
+  } catch (error) {
+    console.error('Save language setting failed', error);
   }
 };
 

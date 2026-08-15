@@ -5,6 +5,7 @@ import {colors, shadow} from '../constants/theme';
 import {speakJapanese} from '../services/speech';
 import {VocabularyWord} from '../types/vocabulary';
 import {composeDisplayWord, splitSemicolonText} from '../utils/vocabulary';
+import {useI18n} from '../i18n';
 
 function InfoRow({label, color, children}: {label: string; color: string; children: React.ReactNode}) {
   return (
@@ -18,8 +19,13 @@ function InfoRow({label, color, children}: {label: string; color: string; childr
 }
 
 export function WordCard({word, showAnswer = true}: {word: VocabularyWord; showAnswer?: boolean}) {
+  const {language, t} = useI18n();
   const [speaking, setSpeaking] = useState(false);
   const title = composeDisplayWord(word);
+  const primaryMeaning = language === 'en' ? word.meaning_en : word.meaning_zh;
+  const secondaryMeaning = language === 'en' ? word.meaning_zh : word.meaning_en;
+  const primaryMeaningLabel = language === 'en' ? t.word.englishMeaning : t.word.chineseMeaning;
+  const secondaryMeaningLabel = language === 'en' ? t.word.chineseMeaning : t.word.englishMeaning;
   const speak = async (text: string) => {
     setSpeaking(true);
     await speakJapanese(text);
@@ -30,7 +36,7 @@ export function WordCard({word, showAnswer = true}: {word: VocabularyWord; showA
     <View style={[styles.card, shadow]}>
       <View style={styles.titleRow}>
         <Text style={styles.wordTitle} adjustsFontSizeToFit numberOfLines={2}>{title}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="播放单词发音" onPress={() => speak(title)} style={[styles.soundButton, speaking && styles.soundActive]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.word.speakWord} onPress={() => speak(title)} style={[styles.soundButton, speaking && styles.soundActive]}>
           <Icon name="volume-high" size={26} color={colors.ink} />
         </Pressable>
       </View>
@@ -40,31 +46,31 @@ export function WordCard({word, showAnswer = true}: {word: VocabularyWord; showA
       {!showAnswer && (
         <View style={styles.hiddenAnswer}>
           <Icon name="eye-off" size={22} color={colors.ink} />
-          <Text style={styles.hiddenText}>答案已隐藏</Text>
+          <Text style={styles.hiddenText}>{t.word.answerHidden}</Text>
         </View>
       )}
       {showAnswer && (
         <>
       <View style={styles.solidLine} />
-      {!!word.meaning_zh && (
-        <InfoRow label="中文意思" color={colors.yellow}>{splitSemicolonText(word.meaning_zh).map(part => <Text key={part} style={styles.meaning}>{part}</Text>)}</InfoRow>
+      {!!primaryMeaning && (
+        <InfoRow label={primaryMeaningLabel} color={language === 'en' ? colors.blue : colors.yellow}>{splitSemicolonText(primaryMeaning).map(part => <Text key={part} style={styles.meaning}>{part}</Text>)}</InfoRow>
       )}
-      {!!word.meaning_en && (
-        <InfoRow label="English Meaning" color={colors.blue}>{splitSemicolonText(word.meaning_en).map(part => <Text key={part} style={styles.meaning}>{part}</Text>)}</InfoRow>
+      {!!secondaryMeaning && (
+        <InfoRow label={secondaryMeaningLabel} color={language === 'en' ? colors.yellow : colors.blue}>{splitSemicolonText(secondaryMeaning).map(part => <Text key={part} style={styles.meaning}>{part}</Text>)}</InfoRow>
       )}
       {(!!word.example_jp || !!word.example_zh || !!word.example_en) && <View style={styles.exampleDivider} />}
       {!!word.example_jp && (
-        <InfoRow label="日语例句" color={colors.red}>
+        <InfoRow label={t.word.japaneseExample} color={colors.red}>
           <View style={styles.exampleJapanese}>
             <Text style={styles.exampleText}>{word.example_jp}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="播放日语例句" onPress={() => speak(word.example_jp)} style={styles.smallSound}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t.word.speakJapaneseExample} onPress={() => speak(word.example_jp)} style={styles.smallSound}>
               <Icon name="volume-medium" size={18} color={colors.ink} />
             </Pressable>
           </View>
         </InfoRow>
       )}
-      {!!word.example_zh && <InfoRow label="中文例句" color={colors.yellow}><Text style={styles.exampleText}>{word.example_zh}</Text></InfoRow>}
-      {!!word.example_en && <InfoRow label="English Example" color={colors.blue}><Text style={styles.exampleText}>{word.example_en}</Text></InfoRow>}
+      {!!word.example_zh && <InfoRow label={t.word.chineseExample} color={colors.yellow}><Text style={styles.exampleText}>{word.example_zh}</Text></InfoRow>}
+      {!!word.example_en && <InfoRow label={t.word.englishExample} color={colors.blue}><Text style={styles.exampleText}>{word.example_en}</Text></InfoRow>}
         </>
       )}
     </View>

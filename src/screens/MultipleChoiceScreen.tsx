@@ -14,17 +14,19 @@ import {loadPracticeWordsForSource, practiceSourceLabel} from '../services/pract
 import {speakJapanese, stopSpeech} from '../services/speech';
 import {MultipleChoiceQuestion} from '../types/practice';
 import {buildMultipleChoiceQuestions} from '../utils/multipleChoice';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MultipleChoice'>;
 
 export function MultipleChoiceScreen({navigation, route}: Props) {
+  const {language, t} = useI18n();
   const [questions, setQuestions] = useState<MultipleChoiceQuestion[]>([]);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState({correct: 0, total: 0});
   const source = route.params?.source;
-  const sourceLabel = practiceSourceLabel(source);
+  const sourceLabel = practiceSourceLabel(source, t);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,7 +35,7 @@ export function MultipleChoiceScreen({navigation, route}: Props) {
       loadPracticeWordsForSource(source)
         .then(words => {
           if (mounted) {
-            setQuestions(buildMultipleChoiceQuestions(words));
+            setQuestions(buildMultipleChoiceQuestions(words, 4, language));
             setIndex(0);
             setSelected(null);
             setScore({correct: 0, total: 0});
@@ -50,7 +52,7 @@ export function MultipleChoiceScreen({navigation, route}: Props) {
         mounted = false;
         stopSpeech();
       };
-    }, [source]),
+    }, [language, source]),
   );
 
   const current = questions[index];
@@ -88,29 +90,29 @@ export function MultipleChoiceScreen({navigation, route}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="选择题" subtitle={`日语 → 意思 · ${sourceLabel}`} />
+        <ScreenHeader title={t.practice.multipleChoiceTitle} subtitle={t.practice.multipleChoiceSubtitle(sourceLabel)} />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : !current ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>还不能生成选择题</Text>
-            <Text style={styles.emptyText}>请先导入至少两个带中文或英文意思的单词。</Text>
-            <CartoonButton label="返回首页" onPress={() => navigation.popToTop()} accessibilityLabel="返回首页导入单词" />
+            <Text style={styles.emptyTitle}>{t.practice.multipleChoiceEmptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.practice.multipleChoiceEmptyText}</Text>
+            <CartoonButton label={t.common.backHome} onPress={() => navigation.popToTop()} accessibilityLabel={t.chapters.backToImport} />
           </View>
         ) : (
           <View style={styles.practice}>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreText}>{progress}</Text>
-              <Text style={styles.scoreText}>得分 {score.correct}/{score.total}</Text>
+              <Text style={styles.scoreText}>{t.common.score} {score.correct}/{score.total}</Text>
             </View>
             <View style={[styles.questionCard, shadow]}>
               <Text style={styles.questionLabel}>{current.word.jlpt_level} · {current.word.chapter} · {current.word.session}</Text>
               <View style={styles.promptRow}>
                 <Text style={styles.prompt} adjustsFontSizeToFit numberOfLines={2}>{current.prompt}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="播放题目发音" onPress={() => speakJapanese(current.prompt)} style={styles.soundButton}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t.practice.speakPrompt} onPress={() => speakJapanese(current.prompt)} style={styles.soundButton}>
                   <Icon name="volume-high" size={24} color={colors.ink} />
                 </Pressable>
               </View>
@@ -124,7 +126,7 @@ export function MultipleChoiceScreen({navigation, route}: Props) {
                   <Pressable
                     key={option}
                     accessibilityRole="button"
-                    accessibilityLabel={`选择 ${option}`}
+                    accessibilityLabel={t.common.chooseOption(option)}
                     disabled={answered}
                     onPress={() => answer(option)}
                     style={({pressed}) => [
@@ -141,10 +143,10 @@ export function MultipleChoiceScreen({navigation, route}: Props) {
             </View>
             {answered && (
               <View style={styles.feedback}>
-                <Text style={styles.feedbackText}>{isCorrect ? '答对了！' : `正确答案：${current.answer}`}</Text>
+                <Text style={styles.feedbackText}>{isCorrect ? t.common.correct : t.common.correctAnswer(current.answer)}</Text>
                 <CartoonButton
-                  label={index >= questions.length - 1 ? '完成' : '下一题'}
-                  accessibilityLabel={index >= questions.length - 1 ? '完成选择题练习' : '进入下一题'}
+                  label={index >= questions.length - 1 ? t.common.complete : t.common.nextQuestion}
+                  accessibilityLabel={index >= questions.length - 1 ? t.practice.finishMultipleChoice : t.common.nextQuestion}
                   onPress={index >= questions.length - 1 ? () => navigation.goBack() : next}
                   style={styles.nextButton}
                 />

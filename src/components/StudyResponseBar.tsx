@@ -3,11 +3,12 @@ import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native
 import Icon from 'react-native-vector-icons/Ionicons';
 import {colors, shadow} from '../constants/theme';
 import {StudyRating, WordProgress} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
-const options: {rating: StudyRating; label: string; icon: string; color: string}[] = [
-  {rating: 'difficult', label: '困难', icon: 'alert-circle', color: colors.red},
-  {rating: 'unsure', label: '不确定', icon: 'help-circle', color: colors.yellow},
-  {rating: 'known', label: '认识', icon: 'checkmark-circle', color: colors.green},
+const options: {rating: StudyRating; icon: string; color: string}[] = [
+  {rating: 'difficult', icon: 'alert-circle', color: colors.red},
+  {rating: 'unsure', icon: 'help-circle', color: colors.yellow},
+  {rating: 'known', icon: 'checkmark-circle', color: colors.green},
 ];
 
 export function StudyResponseBar({
@@ -21,21 +22,22 @@ export function StudyResponseBar({
   onRate: (rating: StudyRating) => void;
   onToggleFavorite: () => void;
 }) {
+  const {t} = useI18n();
   const mastery = progress?.mastery ?? 0;
   const reviews = progress?.review_count ?? 0;
   const favorite = progress?.favorite === 1;
-  const masteryLabel = mastery >= 6 ? '已掌握' : reviews > 0 ? '学习中' : '未复习';
+  const masteryLabel = mastery >= 6 ? t.word.mastered : reviews > 0 ? t.word.learning : t.word.notReviewed;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.summary}>
         <View style={styles.summaryTextWrap}>
           <Text style={styles.summaryText}>{masteryLabel}</Text>
-          <Text style={styles.metaText}>掌握度 {mastery}/10 · 复习 {reviews} 次</Text>
+          <Text style={styles.metaText}>{t.word.masteryMeta(mastery, reviews)}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={favorite ? '取消收藏单词' : '收藏单词'}
+          accessibilityLabel={favorite ? t.word.unfavorite : t.word.favorite}
           onPress={onToggleFavorite}
           style={styles.favoriteButton}>
           <Icon name={favorite ? 'star' : 'star-outline'} size={22} color={colors.ink} />
@@ -43,13 +45,14 @@ export function StudyResponseBar({
       </View>
       <View style={styles.actions}>
         {options.map(option => {
+          const label = t.word.ratings[option.rating];
           const loading = busyRating === option.rating;
           const darkText = option.rating !== 'difficult';
           return (
             <Pressable
               key={option.rating}
               accessibilityRole="button"
-              accessibilityLabel={`标记为${option.label}`}
+              accessibilityLabel={t.word.markAs(label)}
               disabled={!!busyRating}
               onPress={() => onRate(option.rating)}
               style={({pressed}) => [
@@ -63,7 +66,7 @@ export function StudyResponseBar({
               ) : (
                 <Icon name={option.icon} size={18} color={darkText ? colors.ink : colors.white} />
               )}
-              <Text style={[styles.buttonText, {color: darkText ? colors.ink : colors.white}]}>{option.label}</Text>
+              <Text style={[styles.buttonText, {color: darkText ? colors.ink : colors.white}]}>{label}</Text>
             </Pressable>
           );
         })}

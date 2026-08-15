@@ -12,10 +12,12 @@ import {colors, shadow} from '../constants/theme';
 import {getSessionsByChapter} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {SessionSummary} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChapterSessions'>;
 
 export function ChapterSessionScreen({navigation, route}: Props) {
+  const {t} = useI18n();
   const {level, chapter} = route.params;
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,28 +44,28 @@ export function ChapterSessionScreen({navigation, route}: Props) {
     <SafeAreaView style={styles.safe}>
       <Dots />
       <View style={styles.content}>
-        <CartoonButton label="" color={colors.yellow} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel="返回 Chapter 页面" style={styles.back} />
-        <ScreenHeader title={chapter} subtitle="选择学习整个章节或单独的 Session" />
+        <CartoonButton label="" color={colors.yellow} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel={t.sessions.backChapter} style={styles.back} />
+        <ScreenHeader title={chapter} subtitle={t.sessions.chooseSession} />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : sessions.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>这个章节还没有单词</Text>
-            <Text style={styles.emptyText}>请返回上一页选择其他章节，或回到首页重新导入单词。</Text>
-            <CartoonButton label="返回上一页" onPress={() => navigation.goBack()} accessibilityLabel="返回 Chapter 页面" />
+            <Text style={styles.emptyTitle}>{t.sessions.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.sessions.emptyText}</Text>
+            <CartoonButton label={t.common.back} onPress={() => navigation.goBack()} accessibilityLabel={t.sessions.backChapter} />
           </View>
         ) : (
           <>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`学习 ${chapter} 的全部 ${wordCount} 个单词`}
+              accessibilityLabel={t.sessions.wholeChapterLabel(chapter, wordCount)}
               onPress={() => navigation.navigate('Word', {level, chapter, learningMode: 'chapter'})}
               style={({pressed}) => [styles.wholeCard, shadow, pressed && styles.pressed]}>
               <View style={styles.wholeIcon}><Icon name="layers" size={27} color={colors.white} /></View>
               <View style={styles.wholeContent}>
-                <Text style={styles.wholeTitle}>整章学习</Text>
-                <Text style={styles.wholeText}>学习本章节全部单词</Text>
-                <Text style={styles.wholeText}>共 {wordCount} 个单词</Text>
+                <Text style={styles.wholeTitle}>{t.sessions.wholeChapter}</Text>
+                <Text style={styles.wholeText}>{t.sessions.wholeChapterText}</Text>
+                <Text style={styles.wholeText}>{t.sessions.totalWords(wordCount)}</Text>
               </View>
               <Icon name="arrow-forward" size={28} color={colors.white} />
             </Pressable>

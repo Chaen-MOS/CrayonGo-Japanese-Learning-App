@@ -3,23 +3,25 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {colors, shadow} from '../constants/theme';
 import {ChapterSummary} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
 const chapterColors = [colors.red, colors.yellow, colors.blue, colors.green, colors.purple];
 
 export function ChapterCard({item, index, onPress}: {item: ChapterSummary; index: number; onPress: () => void}) {
+  const {t} = useI18n();
   const backgroundColor = chapterColors[index % chapterColors.length];
   const darkText = backgroundColor === colors.yellow || backgroundColor === colors.green;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.chapter}，${item.sessionCount} 个 Session，${item.wordCount} 个单词`}
+      accessibilityLabel={t.chapters.chapterCardLabel(item.chapter, item.sessionCount, item.wordCount)}
       onPress={onPress}
       style={({pressed}) => [styles.card, shadow, {backgroundColor}, pressed && styles.pressed]}>
       <View style={styles.content}>
         <Text style={[styles.chapter, {color: darkText ? colors.ink : colors.white}]}>{item.chapter}</Text>
-        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.sessionCount} 个 Session</Text>
-        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{item.wordCount} 个单词</Text>
+        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{t.common.sessionsCount(item.sessionCount)}</Text>
+        <Text style={[styles.meta, {color: darkText ? colors.ink : colors.white}]}>{t.common.wordsCount(item.wordCount)}</Text>
       </View>
       <Icon name="arrow-forward" size={30} color={darkText ? colors.ink : colors.white} />
     </Pressable>

@@ -8,22 +8,26 @@ import {Dots} from '../components/Decorations';
 import {ScreenHeader} from '../components/ScreenHeader';
 import {colors, shadow} from '../constants/theme';
 import {RootStackParamList} from '../navigation/Navigation';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LibraryEntry'>;
 
 const tools = [
-  {label: '词库', description: '搜索与筛选单词', icon: 'search', color: colors.blue},
-  {label: '收藏', description: '复习收藏词', icon: 'star', color: colors.yellow},
-  {label: '困难词', description: '集中处理弱项', icon: 'alert-circle', color: colors.red},
-  {label: '最近', description: '查看学习活动', icon: 'time', color: colors.purple},
-];
+  {id: 'vocabulary', icon: 'search', color: colors.blue},
+  {id: 'favorites', icon: 'star', color: colors.yellow},
+  {id: 'difficult', icon: 'alert-circle', color: colors.red},
+  {id: 'recent', icon: 'time', color: colors.purple},
+] as const;
 
 export function LibraryEntryScreen({navigation}: Props) {
-  const openTool = (label: string) => {
-    if (label === '词库') navigation.navigate('VocabularySearch');
-    if (label === '收藏') navigation.navigate('Word', {learningMode: 'favorites'});
-    if (label === '困难词') navigation.navigate('Word', {learningMode: 'difficult'});
-    if (label === '最近') navigation.navigate('RecentActivity');
+  const {t} = useI18n();
+  const labels = {vocabulary: t.library.vocabulary, favorites: t.library.favorites, difficult: t.library.difficult, recent: t.library.recent};
+  const descriptions = {vocabulary: t.library.vocabularyDescription, favorites: t.library.favoritesDescription, difficult: t.library.difficultDescription, recent: t.library.recentDescription};
+  const openTool = (id: (typeof tools)[number]['id']) => {
+    if (id === 'vocabulary') navigation.navigate('VocabularySearch');
+    if (id === 'favorites') navigation.navigate('Word', {learningMode: 'favorites'});
+    if (id === 'difficult') navigation.navigate('Word', {learningMode: 'difficult'});
+    if (id === 'recent') navigation.navigate('RecentActivity');
   };
 
   return (
@@ -36,25 +40,25 @@ export function LibraryEntryScreen({navigation}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="词库与回顾" subtitle="查找、收藏和处理弱项" />
+        <ScreenHeader title={t.library.title} subtitle={t.library.subtitle} />
         <View style={styles.grid}>
           {tools.map(tool => {
             const darkText = tool.color === colors.yellow || tool.color === colors.green;
             return (
               <Pressable
-                key={tool.label}
+                key={tool.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${tool.label}，${tool.description}`}
-                onPress={() => openTool(tool.label)}
+                accessibilityLabel={`${labels[tool.id]}, ${descriptions[tool.id]}`}
+                onPress={() => openTool(tool.id)}
                 style={({pressed}) => [styles.card, shadow, pressed && styles.pressed]}>
                 <View style={[styles.iconBubble, {backgroundColor: tool.color}]}>
                   <Icon name={tool.icon} size={28} color={darkText ? colors.ink : colors.white} />
                 </View>
-                <Text style={styles.cardTitle}>{tool.label}</Text>
-                <Text style={styles.cardDescription}>{tool.description}</Text>
+                <Text style={styles.cardTitle}>{labels[tool.id]}</Text>
+                <Text style={styles.cardDescription}>{descriptions[tool.id]}</Text>
               </Pressable>
             );
           })}

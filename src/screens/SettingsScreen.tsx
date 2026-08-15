@@ -9,6 +9,7 @@ import {CartoonButton} from '../components/CartoonButton';
 import {Dots} from '../components/Decorations';
 import {LevelDropdown} from '../components/LevelDropdown';
 import {ScreenHeader} from '../components/ScreenHeader';
+import {APP_BRAND, APP_VERSION} from '../constants/app';
 import {colors} from '../constants/theme';
 import {clearAllWords, clearWordsByLevel, importVocabulary} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
@@ -25,6 +26,7 @@ import {
 } from '../services/settings';
 import {speakJapanese, stopSpeech} from '../services/speech';
 import {JlptLevel} from '../types/vocabulary';
+import {AppLanguage, useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -38,7 +40,6 @@ const getReadableUri = async (file: DocumentPickerResponse) => {
   if (copy.status === 'success') {
     return copy.localUri;
   }
-  console.log('[Import] local copy failed, falling back to original uri', copy.copyError);
   return file.uri;
 };
 
@@ -82,6 +83,7 @@ function PercentSlider({value, onChange, accessibilityLabel}: {value: number; on
 }
 
 export function SettingsScreen({navigation}: Props) {
+  const {language, setLanguage, t} = useI18n();
   const {bgmEnabled, bgmVolume, setBgmEnabled, setBgmVolume} = useAudio();
   const [autoPronunciation, setAutoPronunciation] = useState(true);
   const [pronunciationVolume, setPronunciationVolume] = useState(0.85);
@@ -138,51 +140,49 @@ export function SettingsScreen({navigation}: Props) {
         allowMultiSelection: false,
       });
       if (!file) {
-        Alert.alert('导入取消', '没有选择文件。');
+        Alert.alert(t.settings.importCanceledTitle, t.settings.importCanceledText);
         return;
       }
       const content = await readTextFile(await getReadableUri(file));
       if (!content.trim()) {
-        Alert.alert('导入失败', '选择的文件是空文件。');
+        Alert.alert(t.settings.importFailedTitle, t.settings.emptyFile);
         return;
       }
       const parsed = parseVocabularyCsv(content, importLevel);
-      parsed.result.messages.forEach(message => console.log('[Import]', message));
       if (parsed.words.length === 0) {
-        Alert.alert('没有可导入的单词', `已导入 0 条\n跳过 ${parsed.result.skipped} 条\n重复 ${parsed.result.duplicates} 条\n无效 ${parsed.result.failed} 条\n等级不一致 ${parsed.result.levelMismatch} 条`);
+        Alert.alert(t.settings.noImportableTitle, t.settings.importResult(0, parsed.result.skipped, parsed.result.duplicates, parsed.result.failed, parsed.result.levelMismatch));
         return;
       }
       const dbResult = await importVocabulary(parsed.words);
       const skipped = parsed.result.skipped + dbResult.skipped;
       const duplicates = parsed.result.duplicates + dbResult.duplicates;
       const failed = parsed.result.failed + dbResult.failed;
-      dbResult.messages.forEach(message => console.log('[Import]', message));
-      Alert.alert('导入成功', `已导入 ${dbResult.inserted} 条\n跳过 ${skipped} 条\n重复 ${duplicates} 条\n无效 ${failed} 条\n等级不一致 ${parsed.result.levelMismatch} 条`);
+      Alert.alert(t.settings.importSuccessTitle, t.settings.importResult(dbResult.inserted, skipped, duplicates, failed, parsed.result.levelMismatch));
     } catch (error) {
       if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) {
         return;
       }
       console.error('[Import] failed', error);
-      Alert.alert('导入失败', error instanceof Error ? error.message : '文件读取或导入失败，请检查 CSV/TSV 格式。');
+      Alert.alert(t.settings.importFailedTitle, t.settings.importReadError);
     } finally {
       setImporting(false);
     }
   };
 
   const confirmClearLevel = () => {
-    Alert.alert('确认清除', `将清除 ${clearLevel} 的所有单词。此操作不可撤销。`, [
-      {text: '取消', style: 'cancel'},
+    Alert.alert(t.settings.confirmClearTitle, t.settings.confirmClearText(clearLevel), [
+      {text: t.common.cancel, style: 'cancel'},
       {
-        text: '确认清除',
+        text: t.settings.confirmClearButton,
         style: 'destructive',
         onPress: async () => {
           setClearing(true);
           try {
             const count = await clearWordsByLevel(clearLevel);
-            Alert.alert('清除完成', `已删除 ${count} 条 ${clearLevel} 单词。`);
+            Alert.alert(t.settings.clearDoneTitle, t.settings.clearDoneText(count, clearLevel));
           } catch (error) {
             console.error('Clear level failed', error);
-            Alert.alert('清除失败', '无法清除该等级单词，请稍后重试。');
+            Alert.alert(t.settings.clearFailedTitle, t.settings.clearFailedText);
           } finally {
             setClearing(false);
           }
@@ -192,19 +192,19 @@ export function SettingsScreen({navigation}: Props) {
   };
 
   const confirmClearAll = () => {
-    Alert.alert('危险操作', '将清空全部单词数据，但保留数据库表。确定继续吗？', [
-      {text: '取消', style: 'cancel'},
+    Alert.alert(t.settings.clearAllTitle, t.settings.clearAllText, [
+      {text: t.common.cancel, style: 'cancel'},
       {
-        text: '再次确认清空',
+        text: t.settings.clearAllConfirm,
         style: 'destructive',
         onPress: async () => {
           setClearing(true);
           try {
             const count = await clearAllWords();
-            Alert.alert('清空完成', `已删除 ${count} 条单词。`);
+            Alert.alert(t.settings.clearAllDoneTitle, t.settings.clearAllDoneText(count));
           } catch (error) {
             console.error('Clear all failed', error);
-            Alert.alert('清空失败', '无法清空单词数据，请稍后重试。');
+            Alert.alert(t.settings.clearAllFailedTitle, t.settings.clearAllFailedText);
           } finally {
             setClearing(false);
           }
@@ -223,78 +223,104 @@ export function SettingsScreen({navigation}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="设置" subtitle="声音、学习和单词管理" />
+        <ScreenHeader title={t.settings.title} subtitle={t.settings.subtitle} />
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.group}>
-            <Text style={styles.groupTitle}>声音</Text>
-            <SettingRow label="背景音乐">
+            <Text style={styles.groupTitle}>{t.settings.language}</Text>
+            <View style={styles.languageSelector}>
+              {(['zh', 'en'] as AppLanguage[]).map(option => {
+                const selected = language === option;
+                const label = option === 'zh' ? t.settings.chinese : t.settings.english;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    onPress={() => setLanguage(option)}
+                    style={[styles.languageOption, selected && styles.languageOptionActive]}>
+                    <Text style={[styles.languageText, selected && styles.languageTextActive]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.group}>
+            <Text style={styles.groupTitle}>{t.settings.audio}</Text>
+            <SettingRow label={t.settings.backgroundMusic}>
               <Switch
-                accessibilityLabel="背景音乐开关"
+                accessibilityLabel={t.settings.bgmToggle}
                 value={bgmEnabled}
                 onValueChange={setBgmEnabled}
                 thumbColor={bgmEnabled ? colors.yellow : '#F4F1E7'}
                 trackColor={{false: '#D6D2C7', true: colors.green}}
               />
             </SettingRow>
-            <SettingRow label="音乐音量">
-              <PercentSlider value={bgmVolume} onChange={setBgmVolume} accessibilityLabel="背景音乐音量" />
+            <SettingRow label={t.settings.musicVolume}>
+              <PercentSlider value={bgmVolume} onChange={setBgmVolume} accessibilityLabel={t.settings.musicVolume} />
             </SettingRow>
-            <SettingRow label="自动朗读">
+            <SettingRow label={t.settings.autoPronunciation}>
               <Switch
-                accessibilityLabel="自动朗读开关"
+                accessibilityLabel={t.settings.autoPronunciationToggle}
                 value={autoPronunciation}
                 onValueChange={toggleAutoPronunciation}
                 thumbColor={autoPronunciation ? colors.yellow : '#F4F1E7'}
                 trackColor={{false: '#D6D2C7', true: colors.green}}
               />
             </SettingRow>
-            <SettingRow label="朗读音量">
-              <PercentSlider value={pronunciationVolume} onChange={updatePronunciationVolume} accessibilityLabel="朗读音量" />
+            <SettingRow label={t.settings.pronunciationVolume}>
+              <PercentSlider value={pronunciationVolume} onChange={updatePronunciationVolume} accessibilityLabel={t.settings.pronunciationVolume} />
             </SettingRow>
             <View style={styles.rateRow}>
-              <Text style={styles.settingLabel}>朗读速度</Text>
+              <Text style={styles.settingLabel}>{t.settings.pronunciationRate}</Text>
               {[0.35, 0.45, 0.55].map(rate => (
                 <Pressable
                   key={rate}
                   accessibilityRole="button"
-                  accessibilityLabel={`朗读速度${rate === 0.35 ? '较慢' : rate === 0.45 ? '正常' : '稍快'}`}
+                  accessibilityLabel={t.settings.rateLabel(rate === 0.35 ? t.settings.slow : rate === 0.45 ? t.settings.normal : t.settings.fast)}
                   onPress={() => updatePronunciationRate(rate)}
                   style={[styles.rateChip, pronunciationRate === rate && styles.rateChipActive]}>
-                  <Text style={styles.rateText}>{rate === 0.35 ? '较慢' : rate === 0.45 ? '正常' : '稍快'}</Text>
+                  <Text style={styles.rateText}>{rate === 0.35 ? t.settings.slow : rate === 0.45 ? t.settings.normal : t.settings.fast}</Text>
                 </Pressable>
               ))}
             </View>
             <CartoonButton
-              label="测试朗读"
+              label={t.settings.testPronunciation}
               color={colors.yellow}
               textColor={colors.ink}
-              accessibilityLabel="测试日语朗读"
+              accessibilityLabel={t.settings.testPronunciationLabel}
               onPress={() => speakJapanese('こんにちは')}
               style={styles.testButton}
             />
           </View>
           <View style={styles.group}>
-            <Text style={styles.groupTitle}>学习设置</Text>
-            <Text style={styles.helperText}>当前学习队列会优先安排到期复习和新词。自动朗读等学习偏好已在声音设置中保存。</Text>
+            <Text style={styles.groupTitle}>{t.settings.learningSettings}</Text>
+            <Text style={styles.helperText}>{t.settings.learningSettingsHint}</Text>
           </View>
           <View style={styles.group}>
-            <Text style={styles.groupTitle}>单词管理</Text>
+            <Text style={styles.groupTitle}>{t.settings.vocabularyManagement}</Text>
             <View style={styles.managerRow}>
-              <LevelDropdown value={importLevel} onChange={setImportLevel} accessibilityLabel="选择导入 JLPT 等级" />
-              <CartoonButton label="导入" color={colors.blue} onPress={handleImport} loading={importing} disabled={importing} accessibilityLabel="导入单词文件" style={styles.sideButton} />
+              <LevelDropdown value={importLevel} onChange={setImportLevel} accessibilityLabel={t.settings.importLevel} />
+              <CartoonButton label={t.settings.import} color={colors.blue} onPress={handleImport} loading={importing} disabled={importing} accessibilityLabel={t.settings.importVocabulary} style={styles.sideButton} />
             </View>
             <View style={styles.managerRow}>
-              <LevelDropdown value={clearLevel} onChange={setClearLevel} accessibilityLabel="选择清除 JLPT 等级" />
-              <CartoonButton label="清除" color={colors.yellow} textColor={colors.ink} onPress={confirmClearLevel} disabled={clearing} accessibilityLabel="清除所选等级单词" style={styles.sideButton} />
+              <LevelDropdown value={clearLevel} onChange={setClearLevel} accessibilityLabel={t.settings.clearLevel} />
+              <CartoonButton label={t.settings.clear} color={colors.yellow} textColor={colors.ink} onPress={confirmClearLevel} disabled={clearing} accessibilityLabel={t.settings.clearSelectedLevel} style={styles.sideButton} />
             </View>
-            <CartoonButton label="清空所有单词" onPress={confirmClearAll} disabled={clearing} accessibilityLabel="清空所有单词" style={styles.fullButton} />
+            <CartoonButton label={t.settings.clearAllVocabulary} onPress={confirmClearAll} disabled={clearing} accessibilityLabel={t.settings.clearAllVocabulary} style={styles.fullButton} />
           </View>
           <View style={styles.group}>
-            <Text style={styles.groupTitle}>其他</Text>
-            <Text style={styles.helperText}>蜡笔GO 离线保存你的单词、学习进度和设置，不需要登录。</Text>
+            <Text style={styles.groupTitle}>{t.settings.other}</Text>
+            <View style={styles.appInfoRow}>
+              <Text style={styles.appInfoLabel}>{t.settings.appName}</Text>
+              <View style={styles.appInfoValueWrap}>
+                <Text style={styles.appInfoValue}>{APP_BRAND}</Text>
+                <Text style={styles.appInfoVersion}>{t.settings.version(APP_VERSION)}</Text>
+              </View>
+            </View>
+            <Text style={styles.helperText}>{t.settings.offlineHint}</Text>
           </View>
         </ScrollView>
       </View>
@@ -317,6 +343,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   groupTitle: {color: colors.ink, fontSize: 20, fontWeight: '900'},
+  languageSelector: {
+    minHeight: 48,
+    borderWidth: 3,
+    borderColor: colors.ink,
+    borderRadius: 18,
+    backgroundColor: '#FFF3D0',
+    padding: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  languageOption: {flex: 1, minHeight: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+  languageOptionActive: {backgroundColor: colors.blue, borderWidth: 3, borderColor: colors.ink},
+  languageText: {color: colors.ink, fontSize: 15, fontWeight: '900'},
+  languageTextActive: {color: colors.white},
+  appInfoRow: {minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14},
+  appInfoLabel: {color: colors.ink, fontSize: 15, fontWeight: '900'},
+  appInfoValueWrap: {alignItems: 'flex-end', flexShrink: 1},
+  appInfoValue: {color: colors.ink, fontSize: 16, fontWeight: '900'},
+  appInfoVersion: {color: colors.muted, fontSize: 13, fontWeight: '800', marginTop: 2},
   settingRow: {minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14},
   settingLabel: {color: colors.ink, fontSize: 15, fontWeight: '900'},
   sliderWrap: {flex: 1, minHeight: 68, justifyContent: 'center', gap: 8},

@@ -12,10 +12,12 @@ import {colors} from '../constants/theme';
 import {getChaptersByLevel} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {ChapterSummary} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chapters'>;
 
 export function ChapterScreen({navigation, route}: Props) {
+  const {t} = useI18n();
   const {level} = route.params;
   const [chapters, setChapters] = useState<ChapterSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,20 +43,20 @@ export function ChapterScreen({navigation, route}: Props) {
     <SafeAreaView style={styles.safe}>
       <Dots />
       <View style={styles.content}>
-        <CartoonButton label="" color={colors.yellow} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel="返回 JLPT 等级页面" style={styles.back} />
+        <CartoonButton label="" color={colors.yellow} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel={t.common.back} style={styles.back} />
         <View style={styles.header}>
           <Logo small />
           <Text style={styles.title}>{level} Chapters</Text>
-          <Text style={styles.subtitle}>选择今天要学习的章节</Text>
+          <Text style={styles.subtitle}>{t.chapters.subtitle}</Text>
           <View style={styles.underline} />
         </View>
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : chapters.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>这个等级还没有章节</Text>
-            <Text style={styles.emptyText}>请先回到首页导入 {level} 的 CSV 或 TSV 文件。</Text>
-            <CartoonButton label="返回首页" onPress={() => navigation.popToTop()} accessibilityLabel="返回首页导入单词" />
+            <Text style={styles.emptyTitle}>{t.chapters.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.chapters.emptyText(level)}</Text>
+            <CartoonButton label={t.common.backHome} onPress={() => navigation.popToTop()} accessibilityLabel={t.chapters.backToImport} />
           </View>
         ) : (
           <FlatList

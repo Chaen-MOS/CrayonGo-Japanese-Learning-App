@@ -3,6 +3,7 @@ import {Modal, Pressable, StyleSheet, Text, View} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {colors, shadow} from '../constants/theme';
 import {JLPT_LEVELS, JlptLevel} from '../types/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = {
   value: JlptLevel;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function LevelDropdown({value, onChange, accessibilityLabel}: Props) {
+  const {t} = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -25,7 +27,7 @@ export function LevelDropdown({value, onChange, accessibilityLabel}: Props) {
               <Pressable
                 key={level}
                 accessibilityRole="button"
-                accessibilityLabel={`选择 ${level}`}
+                accessibilityLabel={t.common.selectLevel(level)}
                 style={[styles.option, value === level && styles.activeOption]}
                 onPress={() => {
                   onChange(level);

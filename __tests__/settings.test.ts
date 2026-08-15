@@ -1,4 +1,4 @@
-import {loadAutoPronunciation, saveAutoPronunciation} from '../src/services/settings';
+import {loadAutoPronunciation, loadLanguage, saveAutoPronunciation, saveLanguage} from '../src/services/settings';
 
 const mockStore = new Map<string, string>();
 
@@ -23,5 +23,22 @@ describe('settings', () => {
 
     await saveAutoPronunciation(true);
     expect(await loadAutoPronunciation()).toBe(true);
+  });
+
+  it('defaults language to Chinese', async () => {
+    expect(await loadLanguage()).toBe('zh');
+  });
+
+  it('saves and loads language preference', async () => {
+    await saveLanguage('en');
+    expect(await loadLanguage()).toBe('en');
+
+    await saveLanguage('zh');
+    expect(await loadLanguage()).toBe('zh');
+  });
+
+  it('falls back to Chinese for unsupported language values', async () => {
+    mockStore.set('labigo.settings.language', 'fr');
+    expect(await loadLanguage()).toBe('zh');
   });
 });

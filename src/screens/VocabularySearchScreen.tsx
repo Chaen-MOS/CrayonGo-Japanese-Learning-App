@@ -12,19 +12,14 @@ import {searchVocabulary} from '../database/repository';
 import {RootStackParamList} from '../navigation/Navigation';
 import {JlptLevel, VocabularySearchFilter, VocabularyWord} from '../types/vocabulary';
 import {composeDisplayWord} from '../utils/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VocabularySearch'>;
 
-const filters: {value: VocabularySearchFilter; label: string}[] = [
-  {value: 'all', label: '全部'},
-  {value: 'new', label: '新词'},
-  {value: 'learning', label: '学习中'},
-  {value: 'mastered', label: '已掌握'},
-  {value: 'favorites', label: '收藏'},
-  {value: 'difficult', label: '困难'},
-];
+const filterValues: VocabularySearchFilter[] = ['all', 'new', 'learning', 'mastered', 'favorites', 'difficult'];
 
 export function VocabularySearchScreen({navigation}: Props) {
+  const {language, t} = useI18n();
   const [level, setLevel] = useState<JlptLevel>('N5');
   const [filter, setFilter] = useState<VocabularySearchFilter>('all');
   const [query, setQuery] = useState('');
@@ -62,13 +57,13 @@ export function VocabularySearchScreen({navigation}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="词库搜索" subtitle="按单词、假名、罗马音或意思查找" />
+        <ScreenHeader title={t.search.title} subtitle={t.search.subtitle} />
         <View style={styles.searchPanel}>
           <View style={styles.searchRow}>
-            <LevelDropdown value={level} onChange={setLevel} accessibilityLabel="选择搜索 JLPT 等级" />
+            <LevelDropdown value={level} onChange={setLevel} accessibilityLabel={t.search.levelLabel} />
             <View style={styles.inputWrap}>
               <Icon name="search" size={20} color={colors.muted} />
               <TextInput
@@ -76,31 +71,34 @@ export function VocabularySearchScreen({navigation}: Props) {
                 onChangeText={setQuery}
                 placeholder="犬 / いぬ / dog"
                 placeholderTextColor={colors.muted}
-                accessibilityLabel="输入搜索关键词"
+                accessibilityLabel={t.search.inputLabel}
                 style={styles.input}
                 autoCorrect={false}
               />
             </View>
           </View>
           <View style={styles.filterRow}>
-            {filters.map(item => (
+            {filterValues.map(value => {
+              const label = t.search.filters[value];
+              return (
               <Pressable
-                key={item.value}
+                key={value}
                 accessibilityRole="button"
-                accessibilityLabel={`筛选${item.label}单词`}
-                onPress={() => setFilter(item.value)}
-                style={[styles.filterChip, filter === item.value && styles.filterChipActive]}>
-                <Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text>
+                accessibilityLabel={t.search.filterLabel(label)}
+                onPress={() => setFilter(value)}
+                style={[styles.filterChip, filter === value && styles.filterChipActive]}>
+                <Text style={[styles.filterText, filter === value && styles.filterTextActive]}>{label}</Text>
               </Pressable>
-            ))}
+              );
+            })}
           </View>
         </View>
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : results.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>没有找到匹配单词</Text>
-            <Text style={styles.emptyText}>试试切换 JLPT 等级、筛选条件，或输入更短的关键词。</Text>
+            <Text style={styles.emptyTitle}>{t.search.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.search.emptyText}</Text>
           </View>
         ) : (
           <FlatList
@@ -114,7 +112,7 @@ export function VocabularySearchScreen({navigation}: Props) {
               return (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`打开 ${title} 所在 Session`}
+                  accessibilityLabel={t.search.openSession(title)}
                   onPress={() =>
                     navigation.navigate('Word', {
                       level: item.jlpt_level,
@@ -127,7 +125,7 @@ export function VocabularySearchScreen({navigation}: Props) {
                   <View style={styles.resultMain}>
                     <Text style={styles.resultTitle}>{title}</Text>
                     <Text style={styles.resultKana}>{item.kana}{item.romaji ? ` · ${item.romaji}` : ''}</Text>
-                    <Text style={styles.resultMeaning} numberOfLines={2}>{item.meaning_zh || item.meaning_en || '暂无释义'}</Text>
+                    <Text style={styles.resultMeaning} numberOfLines={2}>{(language === 'en' ? item.meaning_en || item.meaning_zh : item.meaning_zh || item.meaning_en) || t.search.noMeaning}</Text>
                   </View>
                   <View style={styles.resultMeta}>
                     <Text style={styles.metaText}>{item.jlpt_level}</Text>

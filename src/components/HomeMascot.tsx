@@ -1,9 +1,9 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, ImageSourcePropType, StyleSheet, View} from 'react-native';
+import {useI18n} from '../i18n';
 
-const mascotSource = require('../../image/home-family-mascot.png') as ImageSourcePropType;
-
-export function HomeMascot({compact = false}: {compact?: boolean}) {
+export function HomeMascot({compact = false, source}: {compact?: boolean; source: ImageSourcePropType}) {
+  const {t} = useI18n();
   const float = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -49,10 +49,10 @@ export function HomeMascot({compact = false}: {compact?: boolean}) {
   return (
     <View
       accessible
-      accessibilityLabel="蜡笔GO 首页家庭吉祥物"
+      accessibilityLabel={t.home.mascotLabel}
       style={[styles.wrap, compact && styles.compactWrap]}>
       <Animated.Image
-        source={mascotSource}
+        source={source}
         resizeMode="contain"
         style={[styles.image, {opacity, transform: [{translateY}, {scale}]}]}
       />

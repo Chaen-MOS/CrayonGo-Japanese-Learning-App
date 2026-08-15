@@ -27,39 +27,41 @@ import {clearStudyIndex, loadStudyIndex, saveStudyIndex, studySessionKey} from '
 import {StudyRating, VocabularyWord, WordProgress} from '../types/vocabulary';
 import {shuffleWords} from '../utils/studyQueue';
 import {composeDisplayWord} from '../utils/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Word'>;
 
-const emptyStateFor = (learningMode: Props['route']['params']['learningMode']) => {
+const emptyStateFor = (learningMode: Props['route']['params']['learningMode'], t: ReturnType<typeof useI18n>['t']) => {
   if (learningMode === 'favorites') {
     return {
-      title: '还没有收藏单词',
-      text: '学习时点亮星星，就可以在这里集中复习收藏词。',
-      button: '去学习',
+      title: t.word.emptyFavoritesTitle,
+      text: t.word.emptyFavoritesText,
+      button: t.word.goStudy,
     };
   }
   if (learningMode === 'difficult') {
     return {
-      title: '暂时没有困难词',
-      text: '把不熟的单词标记为困难后，它们会出现在这里。',
-      button: '去学习',
+      title: t.word.emptyDifficultTitle,
+      text: t.word.emptyDifficultText,
+      button: t.word.goStudy,
     };
   }
   if (learningMode === 'daily') {
     return {
-      title: '今日复习完成',
-      text: '当前没有到期复习或新词。可以去选择一个 JLPT 等级继续学习。',
-      button: '选择等级',
+      title: t.word.emptyDailyTitle,
+      text: t.word.emptyDailyText,
+      button: t.word.chooseLevel,
     };
   }
   return {
-    title: '这里还没有单词',
-    text: '请回到首页导入单词后再开始学习。',
-    button: '返回首页',
+    title: t.word.emptyDefaultTitle,
+    text: t.word.emptyDefaultText,
+    button: t.common.backHome,
   };
 };
 
 export function WordScreen({navigation, route}: Props) {
+  const {t} = useI18n();
   const {level, chapter, session, learningMode, studyMode = 'standard'} = route.params;
   const insets = useSafeAreaInsets();
   const [words, setWords] = useState<VocabularyWord[]>([]);
@@ -140,7 +142,7 @@ export function WordScreen({navigation, route}: Props) {
   }, []);
 
   const current = words[index];
-  const emptyState = emptyStateFor(learningMode);
+  const emptyState = emptyStateFor(learningMode, t);
   const progress = useMemo(() => (words.length > 0 ? `${index + 1} / ${words.length}` : '0 / 0'), [index, words.length]);
   const canPrev = index > 0;
   const canNext = index < words.length - 1;
@@ -208,17 +210,17 @@ export function WordScreen({navigation, route}: Props) {
     <SafeAreaView style={styles.safe}>
       <Dots />
       <View style={[styles.content, {paddingBottom: Math.max(8, insets.bottom + 4)}]}>
-        <CartoonButton label="" color={colors.white} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel="返回 Chapter Session 页面" style={styles.back} />
+        <CartoonButton label="" color={colors.white} textColor={colors.ink} icon={<Icon name="arrow-back" size={26} color={colors.ink} />} onPress={() => navigation.goBack()} accessibilityLabel={t.common.back} style={styles.back} />
         <Logo small />
         <View style={styles.headerLine}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>{learningMode === 'daily' ? '今日复习' : learningMode === 'favorites' ? '收藏复习' : learningMode === 'difficult' ? '困难复习' : `${level} · ${chapter}`}</Text>
-            <Text style={styles.subtitle}>{studyMode === 'flashcard' ? '闪卡模式' : learningMode === 'daily' ? '到期复习 + 新词' : learningMode === 'favorites' ? '收藏单词' : learningMode === 'difficult' ? '困难单词' : learningMode === 'chapter' ? '整章学习' : session}</Text>
+            <Text style={styles.title}>{learningMode === 'daily' ? t.word.dailyReview : learningMode === 'favorites' ? t.word.favoritesReview : learningMode === 'difficult' ? t.word.difficultReview : `${level} · ${chapter}`}</Text>
+            <Text style={styles.subtitle}>{studyMode === 'flashcard' ? t.word.flashcardMode : learningMode === 'daily' ? t.word.dailySubtitle : learningMode === 'favorites' ? t.word.favoritesSubtitle : learningMode === 'difficult' ? t.word.difficultSubtitle : learningMode === 'chapter' ? t.word.chapterStudy : session}</Text>
           </View>
           <View style={styles.progressPill}><Text style={styles.progressText}>{progress}</Text></View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={shuffled ? '恢复原始顺序' : '随机排序单词'}
+            accessibilityLabel={shuffled ? t.word.restoreOrder : t.word.shuffle}
             onPress={toggleShuffle}
             style={[styles.shuffleButton, shuffled && styles.shuffleActive]}>
             <Icon name="shuffle" size={18} color={colors.ink} />
@@ -234,10 +236,10 @@ export function WordScreen({navigation, route}: Props) {
                 <StudyResponseBar progress={currentProgress} busyRating={busyRating} onRate={rateCurrentWord} onToggleFavorite={toggleFavorite} />
               ) : (
                 <CartoonButton
-                  label="显示答案"
+                  label={t.word.showAnswer}
                   color={colors.yellow}
                   textColor={colors.ink}
-                  accessibilityLabel="显示闪卡答案"
+                  accessibilityLabel={t.word.showFlashcardAnswer}
                   onPress={() => setAnswerVisible(true)}
                   style={styles.revealButton}
                 />
@@ -256,11 +258,11 @@ export function WordScreen({navigation, route}: Props) {
           )}
         </View>
         <View pointerEvents="box-none" style={styles.navLayer}>
-          <Pressable accessibilityRole="button" accessibilityLabel="上一词" disabled={!canPrev} onPress={() => go(-1)} style={[styles.navButton, shadow, !canPrev && styles.navDisabled]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.word.previous} disabled={!canPrev} onPress={() => go(-1)} style={[styles.navButton, shadow, !canPrev && styles.navDisabled]}>
             <Icon name="chevron-back" size={28} color={colors.ink} />
           </Pressable>
           <View style={styles.bottomStar} />
-          <Pressable accessibilityRole="button" accessibilityLabel="下一词" disabled={!canNext} onPress={() => go(1)} style={[styles.navButton, shadow, !canNext && styles.navDisabled]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t.word.next} disabled={!canNext} onPress={() => go(1)} style={[styles.navButton, shadow, !canNext && styles.navDisabled]}>
             <Icon name="chevron-forward" size={28} color={colors.ink} />
           </Pressable>
         </View>

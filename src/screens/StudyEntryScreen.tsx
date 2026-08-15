@@ -9,22 +9,36 @@ import {ScreenHeader} from '../components/ScreenHeader';
 import {colors, shadow} from '../constants/theme';
 import {RootStackParamList} from '../navigation/Navigation';
 import {dailyPracticeSource} from '../services/practiceSource';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'StudyEntry'>;
 
 const modes = [
-  {label: '闪卡', description: '隐藏答案回想', icon: 'albums', color: colors.purple},
-  {label: '选择题', description: '日语 → 意思', icon: 'checkmark-done-circle', color: colors.blue},
-  {label: '输入', description: '意思 → 日语', icon: 'create', color: colors.green},
-  {label: '假名', description: '读音辨认', icon: 'text', color: colors.yellow},
-];
+  {id: 'flashcards', icon: 'albums', color: colors.purple},
+  {id: 'multipleChoice', icon: 'checkmark-done-circle', color: colors.blue},
+  {id: 'typing', icon: 'create', color: colors.green},
+  {id: 'kana', icon: 'text', color: colors.yellow},
+] as const;
 
 export function StudyEntryScreen({navigation}: Props) {
-  const openMode = (label: string) => {
-    if (label === '闪卡') navigation.navigate('Word', {learningMode: 'daily', studyMode: 'flashcard'});
-    if (label === '选择题') navigation.navigate('MultipleChoice', {source: dailyPracticeSource});
-    if (label === '输入') navigation.navigate('TypingPractice', {source: dailyPracticeSource});
-    if (label === '假名') navigation.navigate('KanaDrill', {source: dailyPracticeSource});
+  const {t} = useI18n();
+  const labels = {
+    flashcards: t.study.flashcards,
+    multipleChoice: t.study.multipleChoice,
+    typing: t.study.typing,
+    kana: t.study.kana,
+  };
+  const descriptions = {
+    flashcards: t.study.flashcardsDescription,
+    multipleChoice: t.study.multipleChoiceDescription,
+    typing: t.study.typingDescription,
+    kana: t.study.kanaDescription,
+  };
+  const openMode = (id: (typeof modes)[number]['id']) => {
+    if (id === 'flashcards') navigation.navigate('Word', {learningMode: 'daily', studyMode: 'flashcard'});
+    if (id === 'multipleChoice') navigation.navigate('MultipleChoice', {source: dailyPracticeSource});
+    if (id === 'typing') navigation.navigate('TypingPractice', {source: dailyPracticeSource});
+    if (id === 'kana') navigation.navigate('KanaDrill', {source: dailyPracticeSource});
   };
 
   return (
@@ -37,25 +51,25 @@ export function StudyEntryScreen({navigation}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="学习入口" subtitle="选择今天想用的练习方式" />
+        <ScreenHeader title={t.study.title} subtitle={t.study.subtitle} />
         <View style={styles.grid}>
           {modes.map(mode => {
             const darkText = mode.color === colors.yellow || mode.color === colors.green;
             return (
               <Pressable
-                key={mode.label}
+                key={mode.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${mode.label}，${mode.description}`}
-                onPress={() => openMode(mode.label)}
+                accessibilityLabel={`${labels[mode.id]}, ${descriptions[mode.id]}`}
+                onPress={() => openMode(mode.id)}
                 style={({pressed}) => [styles.card, shadow, pressed && styles.pressed]}>
                 <View style={[styles.iconBubble, {backgroundColor: mode.color}]}>
                   <Icon name={mode.icon} size={28} color={darkText ? colors.ink : colors.white} />
                 </View>
-                <Text style={styles.cardTitle}>{mode.label}</Text>
-                <Text style={styles.cardDescription}>{mode.description}</Text>
+                <Text style={styles.cardTitle}>{labels[mode.id]}</Text>
+                <Text style={styles.cardDescription}>{descriptions[mode.id]}</Text>
               </Pressable>
             );
           })}

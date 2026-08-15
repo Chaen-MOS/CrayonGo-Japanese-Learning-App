@@ -15,10 +15,12 @@ import {speakJapanese, stopSpeech} from '../services/speech';
 import {VocabularyWord} from '../types/vocabulary';
 import {isTypingAnswerCorrect, typingPromptFor} from '../utils/typingPractice';
 import {composeDisplayWord} from '../utils/vocabulary';
+import {useI18n} from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TypingPractice'>;
 
 export function TypingPracticeScreen({navigation, route}: Props) {
+  const {language, t} = useI18n();
   const [words, setWords] = useState<VocabularyWord[]>([]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -27,7 +29,7 @@ export function TypingPracticeScreen({navigation, route}: Props) {
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState({correct: 0, total: 0});
   const source = route.params?.source;
-  const sourceLabel = practiceSourceLabel(source);
+  const sourceLabel = practiceSourceLabel(source, t);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,7 +61,7 @@ export function TypingPracticeScreen({navigation, route}: Props) {
   );
 
   const current = words[index];
-  const prompt = current ? typingPromptFor(current) : '';
+  const prompt = current ? typingPromptFor(current, language) : '';
   const expected = current ? composeDisplayWord(current) : '';
   const progress = useMemo(() => (words.length ? `${index + 1} / ${words.length}` : '0 / 0'), [index, words.length]);
 
@@ -96,40 +98,40 @@ export function TypingPracticeScreen({navigation, route}: Props) {
           textColor={colors.ink}
           icon={<Icon name="arrow-back" size={26} color={colors.ink} />}
           onPress={() => navigation.goBack()}
-          accessibilityLabel="返回首页"
+          accessibilityLabel={t.common.backHome}
           style={styles.back}
         />
-        <ScreenHeader title="输入练习" subtitle={`意思 → 日语 · ${sourceLabel}`} />
+        <ScreenHeader title={t.practice.typingTitle} subtitle={t.practice.typingSubtitle(sourceLabel)} />
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={colors.red} /></View>
         ) : !current ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>还不能开始输入练习</Text>
-            <Text style={styles.emptyText}>请先导入带中文或英文意思的单词。</Text>
-            <CartoonButton label="返回首页" onPress={() => navigation.popToTop()} accessibilityLabel="返回首页导入单词" />
+            <Text style={styles.emptyTitle}>{t.practice.typingEmptyTitle}</Text>
+            <Text style={styles.emptyText}>{t.practice.typingEmptyText}</Text>
+            <CartoonButton label={t.common.backHome} onPress={() => navigation.popToTop()} accessibilityLabel={t.chapters.backToImport} />
           </View>
         ) : (
           <View style={styles.practice}>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreText}>{progress}</Text>
-              <Text style={styles.scoreText}>得分 {score.correct}/{score.total}</Text>
+              <Text style={styles.scoreText}>{t.common.score} {score.correct}/{score.total}</Text>
             </View>
             <View style={[styles.card, shadow]}>
-              <Text style={styles.promptLabel}>意思</Text>
+              <Text style={styles.promptLabel}>{t.practice.meaning}</Text>
               <Text style={styles.prompt}>{prompt}</Text>
               <TextInput
                 value={answer}
                 onChangeText={setAnswer}
                 editable={!checked}
-                placeholder="输入日语或 kana"
+                placeholder={t.practice.typingPlaceholder}
                 placeholderTextColor={colors.muted}
-                accessibilityLabel="输入日语答案"
+                accessibilityLabel={t.practice.typingInputLabel}
                 autoCorrect={false}
                 style={styles.input}
               />
               {checked && (
                 <View style={[styles.feedback, correct ? styles.correctBox : styles.wrongBox]}>
-                  <Text style={styles.feedbackText}>{correct ? '答对了！' : `正确答案：${expected}`}</Text>
+                  <Text style={styles.feedbackText}>{correct ? t.common.correct : t.common.correctAnswer(expected)}</Text>
                   {!!current.kana && <Text style={styles.feedbackKana}>{current.kana}</Text>}
                   <CartoonButton
                     label=""
@@ -137,15 +139,15 @@ export function TypingPracticeScreen({navigation, route}: Props) {
                     textColor={colors.ink}
                     icon={<Icon name="volume-high" size={22} color={colors.ink} />}
                     onPress={() => speakJapanese(expected)}
-                    accessibilityLabel="播放正确答案发音"
+                    accessibilityLabel={t.practice.speakCorrectAnswer}
                     style={styles.soundButton}
                   />
                 </View>
               )}
             </View>
             <CartoonButton
-              label={checked ? (index >= words.length - 1 ? '完成' : '下一题') : '检查答案'}
-              accessibilityLabel={checked ? (index >= words.length - 1 ? '完成输入练习' : '进入下一题') : '检查输入答案'}
+              label={checked ? (index >= words.length - 1 ? t.common.complete : t.common.nextQuestion) : t.practice.checkAnswer}
+              accessibilityLabel={checked ? (index >= words.length - 1 ? t.practice.finishTyping : t.common.nextQuestion) : t.practice.checkAnswer}
               disabled={!checked && !answer.trim()}
               onPress={checked ? (index >= words.length - 1 ? () => navigation.goBack() : next) : check}
               style={styles.actionButton}
