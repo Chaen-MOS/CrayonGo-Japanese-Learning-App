@@ -1,6 +1,6 @@
-# 蜡笔GO
+# 蜡笔GO CrayonGo
 
-蜡笔GO is an Android-first React Native CLI app for offline Japanese vocabulary study. It focuses on JLPT vocabulary import, local review, Japanese pronunciation, and playful mobile UI polish without login, backend services, Firebase, or paid APIs.
+CrayonGo is a React Native Japanese learning app designed for JLPT vocabulary study. It includes flashcards, multiple-choice and typing practice, Japanese pronunciation, vocabulary review, progress tracking, and bilingual Chinese/English UI.
 
 ## Screenshots
 
